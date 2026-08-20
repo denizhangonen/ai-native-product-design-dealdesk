@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# allow the placeholder example, keep every real env file out
+!.env.example
+
+# backup and scratch copies (a suffixed copy of an ignored file is NOT ignored)
+*.local
+*.bak
+*.backup
+*.orig
+*.rej

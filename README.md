@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dealdesk
 
-## Getting Started
+A discount approval flow that lives where the work already happens.
 
-First, run the development server:
+A sales rep asks for a discount in Slack. The request is understood, the rule is applied
+in code, and finance approves by replying to an ordinary email. The rep hears back in the
+same Slack thread. Nobody opens a new app.
+
+This is a **working slice, not a product**. It exists to show what AI-native product design
+looks like when the software comes to the user instead of waiting to be fed.
+
+## Status
+
+The full loop works end to end against real services: a Slack request comes in, a model
+extracts the fields, code decides the route, finance approves by replying to an ordinary
+email, the rep hears back in the same Slack thread, and the status page updates. Mail is
+sent and received through Resend on a subdomain of its own. Running locally, a stand-in
+provider keeps the whole flow working with no account and no network.
+
+`/` lists recent requests, `/r/DD-1042` shows one request. Each request records two things
+side by side: the model's own note on how it read the message, with the confidence and the
+model name, and the rule that decided the route. Telling those apart is the point.
+
+Both pages are public and read-only, so they show no names and no email addresses.
+
+## Stack
+
+Next.js (App Router, TypeScript), Postgres on Supabase, deployed on Vercel.
+Slack and email need a public HTTPS URL to deliver events to, which is the whole reason
+this is deployed rather than run locally.
+
+## Layout
+
+Each layer is a folder under `src/`, and may only import from the layers below it.
+
+| Layer | Folder | Holds |
+| --- | --- | --- |
+| Domain | `src/domain/` | Types, state machine, business rules. Pure functions, no I/O. |
+| Data | `src/data/` | SQL queries, one file per concept. |
+| AI | `src/ai/` | Prompts, model calls, output schemas and validation. |
+| Integrations | `src/integrations/` | One folder per external system (Slack, email). |
+| Guards | `src/guards/` | Signature checks, allow-lists, rate limits. |
+| Services | `src/services/` | Use cases that orchestrate the layers above. |
+| API | `src/app/api/` | Thin route handlers. |
+| UI | `src/app/`, `src/components/` | Pages and presentational components. |
+
+The model extracts; code decides. Approval rules live in `src/domain/`, never in a prompt.
+
+What happens when things go wrong, and how each case is proven: [docs/confidence.md](docs/confidence.md).
+
+## Running it
 
 ```bash
+npm install
+cp .env.example .env.local   # fill in DATABASE_URL
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run check                # typecheck, lint, tests
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`GET /api/health` reports whether the app can reach its database.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Database
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Tables live in a dedicated `dealdesk` schema. The application connects as `dealdesk_app`,
+a role with access to that schema and nothing else. See `db/APPLIED.md`.
 
-## Learn More
+## Not built on purpose
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+No CRM, no admin UI, no user accounts, no multi-step approval chains. Those are product
+surface, and the point here is the workflow.

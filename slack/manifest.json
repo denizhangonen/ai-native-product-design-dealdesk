@@ -1,0 +1,34 @@
+{
+  "display_information": {
+    "name": "Dealdesk",
+    "description": "Discount approvals without leaving Slack",
+    "background_color": "#1f2933"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "Dealdesk",
+      "always_online": false
+    }
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "channels:history",
+        "chat:write",
+        "users:read",
+        "channels:read"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "request_url": "https://dealdesk-gonendenizhangmailcoms-projects.vercel.app/api/slack/events",
+      "bot_events": [
+        "message.channels"
+      ]
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}
