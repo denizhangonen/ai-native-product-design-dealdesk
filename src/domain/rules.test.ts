@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideRoute } from "@/domain/rules";
+import { decideFromCounter, decideRoute } from "@/domain/rules";
 
 const THRESHOLD = 15;
 
@@ -26,5 +26,29 @@ describe("decideRoute", () => {
     const decision = decideRoute({ discountPercent: 20 }, THRESHOLD);
     expect(decision.reason).toContain("20");
     expect(decision.reason).toContain("15");
+  });
+});
+
+describe("decideFromCounter", () => {
+  // A model reading English called this a rejection, and a rep was told no.
+  it("treats a more generous counter as an approval", () => {
+    expect(decideFromCounter({ decision: "reject", counterPercent: 50 }, 25)).toBe("approve");
+  });
+
+  it("treats a counter equal to the request as an approval", () => {
+    expect(decideFromCounter({ decision: "reject", counterPercent: 25 }, 25)).toBe("approve");
+  });
+
+  it("keeps a smaller counter a rejection", () => {
+    expect(decideFromCounter({ decision: "reject", counterPercent: 12 }, 20)).toBe("reject");
+  });
+
+  it("leaves a reply with no counter to the reading", () => {
+    expect(decideFromCounter({ decision: "approve", counterPercent: null }, 20)).toBe("approve");
+    expect(decideFromCounter({ decision: "reject", counterPercent: null }, 20)).toBe("reject");
+  });
+
+  it("never turns an approval into a rejection", () => {
+    expect(decideFromCounter({ decision: "approve", counterPercent: 40 }, 20)).toBe("approve");
   });
 });

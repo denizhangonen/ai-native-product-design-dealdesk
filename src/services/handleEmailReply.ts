@@ -3,6 +3,7 @@ import { getConfig } from "@/config";
 import { markInboundEmailProcessed, recordInboundEmail } from "@/data/inboundEmails";
 import { getRequestByReference } from "@/data/requests";
 import { InvalidTransition } from "@/domain/errors";
+import { decideFromCounter } from "@/domain/rules";
 import { isApprover, normaliseAddress } from "@/guards/approverAllowlist";
 import { extractReference, stripQuotedText } from "@/integrations/email/parseReply";
 import { sendClarification } from "@/integrations/email/send";
@@ -74,7 +75,9 @@ export async function handleEmailReply(email: InboundEmail): Promise<EmailReplyR
     return finish("unclear");
   }
 
-  const { decision, note, counterPercent } = outcome.reading;
+  const { note, counterPercent } = outcome.reading;
+  // The model reports what was written; this rule decides what a counter offer means.
+  const decision = decideFromCounter(outcome.reading, request.discountPercent);
   const fullNote =
     counterPercent === null
       ? note

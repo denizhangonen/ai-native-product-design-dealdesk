@@ -49,6 +49,8 @@ note, loses the note and nothing else: the request is still read, routed and ans
 | No approvers configured | Nobody can approve (fails closed) | Unit test |
 | Reply is ambiguous ("what's the renewal date?") | Clarification email, state unchanged | Unit test, live |
 | Reply offers a smaller discount | Recorded as a rejection with the counter offer | Unit test, live |
+| Reply offers a larger discount than asked for | Treated as an approval, decided by a rule not a prompt | Unit test, found live |
+| Model writes a condition the approver never wrote | The note is dropped rather than passed on as theirs | Unit test, found live |
 | Same reply email redelivered | No-op (unique `message_id`) | Unit test, live |
 | A delivery fails halfway through | Not marked handled, so a redelivery retries it | Unit test |
 | Two approvers reply at the same moment | Row lock: one wins, the other is refused | Two-connection test |
@@ -96,6 +98,8 @@ message can carry the connection string.
   than the whole deployment. It stops a runaway client, not a determined one.
 - The public list page is rebuilt at most every five seconds, so a shared link cannot
   open a database connection per visitor. A decision can take that long to appear.
+- Both pages ask the server again every five seconds while a request is still moving,
+  and stop as soon as nothing is pending. A tab left open overnight goes quiet.
 - Slack expects an answer within three seconds, and reading a message takes longer than
   that. The route answers Slack immediately and does the work afterwards, so a retry is
   rarely triggered at all. When one is, it is refused by the claim rather than acted on.

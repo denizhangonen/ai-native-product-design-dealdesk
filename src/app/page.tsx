@@ -1,5 +1,7 @@
+import { AutoRefresh } from "@/components/AutoRefresh";
 import { RequestTable } from "@/components/RequestTable";
 import { listRecent } from "@/data/requests";
+import { isFinal } from "@/domain/status";
 
 // Rebuilt at most every few seconds. The page exists to show state changing, but a
 // link that gets shared must not open a database connection per visitor.
@@ -17,6 +19,7 @@ export default async function Home() {
         </p>
       </header>
       <RequestTable requests={requests} />
+      <AutoRefresh everySeconds={5} active={requests.some((request) => !isFinal(request.status))} />
     </main>
   );
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AutoRefresh } from "@/components/AutoRefresh";
 import { HowItWasDecided } from "@/components/HowItWasDecided";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Timeline } from "@/components/Timeline";
@@ -7,6 +8,7 @@ import { listEvents } from "@/data/events";
 import { getRequestByReference } from "@/data/requests";
 import { formatAmount } from "@/domain/request";
 import { decideRoute } from "@/domain/rules";
+import { isFinal } from "@/domain/status";
 import { getConfig } from "@/config";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +60,7 @@ export default async function RequestPage({ params }: PageProps<"/r/[reference]"
 
       <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-gray-500">Timeline</h2>
       <Timeline events={events} />
+      <AutoRefresh everySeconds={5} active={!isFinal(request.status)} />
     </main>
   );
 }

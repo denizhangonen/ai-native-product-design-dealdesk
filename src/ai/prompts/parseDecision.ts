@@ -10,8 +10,9 @@ Fields:
 
 Rules:
 - Use "unclear" whenever the reply does not plainly approve or reject. Never guess.
-- A reply that offers a smaller discount instead is a rejection with a counterPercent.
-- Never invent a condition that is not in the reply.
+- A reply that offers a different discount carries that number as counterPercent.
+- The note must be words taken from the reply. Never write a condition of your own,
+  and never explain or justify the decision.
 
 Examples:
 
@@ -23,6 +24,9 @@ Reply: "Fine by me, but only for Q3."
 
 Reply: "No, 12% is the most we can do."
 {"decision":"reject","note":"12% is the most we can do","counterPercent":12,"confidence":0.95}
+
+Reply: "Go on then, make it 40% if that helps."
+{"decision":"approve","note":"make it 40% if that helps","counterPercent":40,"confidence":0.9}
 
 Reply: "Can you remind me what the renewal date is?"
 {"decision":"unclear","note":null,"counterPercent":null,"confidence":0.9}`;

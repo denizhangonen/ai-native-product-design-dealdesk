@@ -1,4 +1,5 @@
 import { PARSE_DECISION_SYSTEM_PROMPT } from "@/ai/prompts/parseDecision";
+import { quotedNote } from "@/ai/groundNote";
 import { getProvider } from "@/ai/provider";
 import { type DecisionReading, decisionSchema } from "@/ai/schemas";
 import { getConfig } from "@/config";
@@ -69,5 +70,11 @@ export async function parseDecision(reply: string): Promise<DecisionOutcome> {
     return { kind: "unclear", reason: "not confident enough to act" };
   }
 
-  return { kind: "decided", reading: { ...reading, decision } };
+  // The note is passed on to the rep as finance's own words, so it must be theirs.
+  const note = quotedNote(reading.note, reply);
+  if (reading.note && !note) {
+    console.warn({ event: "decision_note_not_in_reply" });
+  }
+
+  return { kind: "decided", reading: { ...reading, decision, note } };
 }
