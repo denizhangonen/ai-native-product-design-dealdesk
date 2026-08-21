@@ -4,7 +4,7 @@ There is no migration history table on this shared Supabase project, so record e
 
 | Environment | Applied through | Checked |
 | --- | --- | --- |
-| Production (`pvgysdiwujwmeivkxsam`, schema `dealdesk`) | 0007 | 20 Aug 2026, verified against the database |
+| Production (`pvgysdiwujwmeivkxsam`, schema `dealdesk`) | 0008 | 20 Aug 2026, verified against the database |
 
 | Migration | What it adds |
 | --- | --- |
@@ -15,6 +15,7 @@ There is no migration history table on this shared Supabase project, so record e
 | 0005 | `inbound_emails`, the approver replies and their de-duplication key |
 | 0006 | `processed_at` on both intake tables, so a half-finished delivery can be retried |
 | 0007 | How the model read the message: confidence, its one-line note, and the model name |
+| 0008 | `claimed_at` on both intake tables, so a retry cannot run beside the attempt it is retrying |
 
 ## How to apply
 

@@ -7,7 +7,21 @@ const mocks = vi.hoisted(() => ({
   getSlackConfig: vi.fn(),
   handleSlackMessage: vi.fn(),
   postMessage: vi.fn(),
+  /** Work the route handed off to run after the response. */
+  deferred: [] as Array<() => Promise<void>>,
 }));
+
+// Stands in for the platform: collect the work, then run it once the answer is sent.
+vi.mock("next/server", () => ({
+  after: (work: () => Promise<void>) => {
+    mocks.deferred.push(work);
+  },
+}));
+
+async function runDeferred(): Promise<void> {
+  const pending = mocks.deferred.splice(0);
+  for (const work of pending) await work();
+}
 
 vi.mock("@/config", () => ({ getSlackConfig: mocks.getSlackConfig }));
 vi.mock("@/services/handleSlackMessage", () => ({
@@ -59,6 +73,7 @@ beforeEach(() => {
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
   clearRateLimits();
+  mocks.deferred.length = 0;
   mocks.getSlackConfig.mockReturnValue(SLACK);
   mocks.handleSlackMessage.mockResolvedValue("submitted");
   mocks.postMessage.mockResolvedValue(undefined);
@@ -71,8 +86,17 @@ describe("POST /api/slack/events", () => {
     expect(await response.json()).toEqual({ challenge: "abc" });
   });
 
+  it("answers before doing the work, because Slack only waits three seconds", async () => {
+    const response = await post(MESSAGE);
+
+    expect(response.status).toBe(200);
+    expect(mocks.handleSlackMessage).not.toHaveBeenCalled();
+  });
+
   it("hands a signed message to the service", async () => {
     const response = await post(MESSAGE);
+    await runDeferred();
+
     expect(response.status).toBe(200);
     expect(mocks.handleSlackMessage).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -85,6 +109,7 @@ describe("POST /api/slack/events", () => {
 
   it("rejects a bad signature before doing any work", async () => {
     const response = await post(MESSAGE, { signed: false });
+    await runDeferred();
     expect(response.status).toBe(401);
     expect(mocks.handleSlackMessage).not.toHaveBeenCalled();
   });
@@ -98,6 +123,7 @@ describe("POST /api/slack/events", () => {
     mocks.handleSlackMessage.mockRejectedValue(new Error("database unreachable"));
 
     const response = await post(MESSAGE);
+    await runDeferred();
 
     expect(response.status).toBe(200);
     expect(mocks.postMessage).toHaveBeenCalledWith(
@@ -112,13 +138,17 @@ describe("POST /api/slack/events", () => {
     mocks.handleSlackMessage.mockRejectedValue(new Error("database unreachable"));
     mocks.postMessage.mockRejectedValue(new Error("slack unreachable"));
 
-    expect((await post(MESSAGE)).status).toBe(200);
+    const response = await post(MESSAGE);
+    await runDeferred();
+
+    expect(response.status).toBe(200);
   });
 
   it("rate limits a caller that floods the endpoint", async () => {
     for (let i = 0; i < 120; i += 1) await post(MESSAGE, { ip: "198.51.100.7" });
 
     const response = await post(MESSAGE, { ip: "198.51.100.7" });
+    await runDeferred();
 
     expect(response.status).toBe(429);
     expect(mocks.handleSlackMessage).toHaveBeenCalledTimes(120);

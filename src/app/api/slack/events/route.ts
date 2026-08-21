@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { type SlackConfig, getSlackConfig } from "@/config";
 import { clientKey, isRateLimited } from "@/guards/rateLimit";
 import { verifySlackSignature } from "@/guards/slackSignature";
@@ -55,23 +56,22 @@ export async function POST(request: Request) {
     return Response.json({ ok: true });
   }
 
-  try {
-    const result = await handleSlackMessage(intake.message, slack);
-    console.info({
-      event: "slack_message_handled",
-      result,
-      eventId: intake.message.eventId,
-    });
-  } catch (error) {
-    // Answer 200 regardless: a Slack retry would either be discarded as a
-    // duplicate or hit the same outage. Tell the person instead.
-    console.error({
-      event: "slack_message_failed",
-      eventId: intake.message.eventId,
-      name: (error as Error).name,
-    });
-    await apologise(slack, intake.message);
-  }
+  // Slack redelivers anything it does not hear back about within three seconds, and
+  // reading a message takes longer than that. So answer now and do the work after.
+  const { message } = intake;
+  after(async () => {
+    try {
+      const result = await handleSlackMessage(message, slack);
+      console.info({ event: "slack_message_handled", result, eventId: message.eventId });
+    } catch (error) {
+      console.error({
+        event: "slack_message_failed",
+        eventId: message.eventId,
+        name: (error as Error).name,
+      });
+      await apologise(slack, message);
+    }
+  });
 
   return Response.json({ ok: true });
 }

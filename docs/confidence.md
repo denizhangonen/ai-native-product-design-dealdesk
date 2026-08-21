@@ -35,6 +35,9 @@ note, loses the note and nothing else: the request is still read, routed and ans
 | Model is unsure (low confidence) | Treated as not understood rather than guessed | Unit test |
 | Model times out | Gives up after 10 seconds, replies in thread | Unit test |
 | Slack delivers the same event twice | Second delivery is a no-op (unique `event_id`) | Unit test, live |
+| Slack redelivers while the first attempt is still running | The redelivery does nothing; one message stays one request | Two-connection test |
+| An attempt dies partway through | Its claim expires after 30 seconds and a redelivery takes over | Two-connection test |
+| An attempt dies after creating the request but before saying so | The retry finds the request and does not create a second | Unit test |
 | Request with a forged Slack signature | 401, nothing read | Unit test, live |
 | Captured Slack request replayed later | Rejected after five minutes | Unit test |
 | Slack name lookup fails | Request is still created, Slack ID used as the name | Unit test, found live |
@@ -93,9 +96,9 @@ message can carry the connection string.
   than the whole deployment. It stops a runaway client, not a determined one.
 - The public list page is rebuilt at most every five seconds, so a shared link cannot
   open a database connection per visitor. A decision can take that long to appear.
-- Slack expects an answer within three seconds. The model call usually fits; when it does
-  not, Slack retries and the retry is discarded as a duplicate. The person still gets
-  their reply from the first attempt.
+- Slack expects an answer within three seconds, and reading a message takes longer than
+  that. The route answers Slack immediately and does the work afterwards, so a retry is
+  rarely triggered at all. When one is, it is refused by the claim rather than acted on.
 - Mail is sent and received through Resend on a subdomain of its own, so the approval
   address is separate from any real mailbox. The signature check is Resend's; the
   application's own scheme is still there for local runs with no mail account.

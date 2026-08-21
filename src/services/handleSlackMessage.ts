@@ -2,6 +2,7 @@ import { parseRequest } from "@/ai/parseRequest";
 import type { SlackConfig } from "@/config";
 import { getConfig } from "@/config";
 import {
+  findLinkedRequest,
   linkRequest,
   markInboundMessageProcessed,
   recordInboundMessage,
@@ -12,13 +13,31 @@ import type { SlackMessage } from "@/integrations/slack/events";
 import { needMoreDetail, notUnderstood, understood } from "@/integrations/slack/replies";
 import { submitRequest } from "@/services/submitRequest";
 
-export type HandleResult = "submitted" | "needs_detail" | "not_understood" | "duplicate";
+export type HandleResult =
+  | "submitted"
+  | "needs_detail"
+  | "not_understood"
+  | "duplicate"
+  | "in_flight";
 
 export async function handleSlackMessage(
   message: SlackMessage,
   slack: SlackConfig,
 ): Promise<HandleResult> {
-  if ((await recordInboundMessage(message)) === "duplicate") return "duplicate";
+  const intake = await recordInboundMessage(message);
+  if (intake === "duplicate") return "duplicate";
+  // Slack redelivers anything we do not answer within three seconds. While the
+  // first attempt is still running, the redelivery must do nothing at all.
+  if (intake === "in_flight") {
+    console.info({ event: "slack_delivery_in_flight", eventId: message.eventId });
+    return "in_flight";
+  }
+  // A previous attempt died after creating the request but before saying so.
+  if (intake === "retry" && (await findLinkedRequest(message.eventId))) {
+    console.warn({ event: "slack_retry_already_created", eventId: message.eventId });
+    await markInboundMessageProcessed(message.eventId);
+    return "duplicate";
+  }
 
   // Slack expects an answer within three seconds, so the model call and the name
   // lookup run together rather than one after the other.

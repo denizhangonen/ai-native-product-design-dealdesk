@@ -17,7 +17,13 @@ export type InboundEmail = {
 };
 
 export type EmailReplyResult =
-  "applied" | "duplicate" | "not_an_approver" | "unknown_reference" | "unclear" | "already_decided";
+  | "applied"
+  | "duplicate"
+  | "in_flight"
+  | "not_an_approver"
+  | "unknown_reference"
+  | "unclear"
+  | "already_decided";
 
 export async function handleEmailReply(email: InboundEmail): Promise<EmailReplyResult> {
   const reference = extractReference(email.subject);
@@ -37,6 +43,11 @@ export async function handleEmailReply(email: InboundEmail): Promise<EmailReplyR
     reference,
   });
   if (intake === "duplicate") return "duplicate";
+  // Another attempt at this same reply is still running; it will finish the job.
+  if (intake === "in_flight") {
+    console.info({ event: "email_delivery_in_flight", reference });
+    return "in_flight";
+  }
 
   const finish = async (result: EmailReplyResult): Promise<EmailReplyResult> => {
     await markInboundEmailProcessed(email.messageId);

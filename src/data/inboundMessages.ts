@@ -1,12 +1,12 @@
 import { type Executor, db } from "@/data/db";
+import { type Intake, claimExisting } from "@/data/intakeClaim";
 import type { SlackMessage } from "@/integrations/slack/events";
 
-/** "duplicate" means already handled; "retry" means a previous attempt did not finish. */
-export type Intake = "new" | "retry" | "duplicate";
+export type { Intake };
 
 /**
- * Stores a delivery once. A redelivery is only refused when the first attempt ran
- * to completion, so a delivery that failed halfway is not lost in silence.
+ * Stores a delivery once and says whether this caller owns it. Slack redelivers an
+ * event it thinks we missed, so the answer must tell a dead attempt from a slow one.
  */
 export async function recordInboundMessage(
   message: SlackMessage,
@@ -21,10 +21,18 @@ export async function recordInboundMessage(
   `;
   if (inserted.length > 0) return "new";
 
-  const [existing] = await sql<{ processed_at: Date | null }[]>`
-    select processed_at from inbound_messages where event_id = ${message.eventId}
+  return claimExisting("inbound_messages", message.eventId, sql);
+}
+
+/** The request a delivery already produced, so a retry does not create a second one. */
+export async function findLinkedRequest(
+  eventId: string,
+  sql: Executor = db(),
+): Promise<string | null> {
+  const [row] = await sql<{ request_id: string | null }[]>`
+    select request_id from inbound_messages where event_id = ${eventId}
   `;
-  return existing?.processed_at ? "duplicate" : "retry";
+  return row?.request_id ?? null;
 }
 
 export async function markInboundMessageProcessed(

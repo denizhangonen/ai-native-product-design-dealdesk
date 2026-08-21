@@ -135,6 +135,14 @@ describe("handleEmailReply", () => {
     );
   });
 
+  it("does nothing when a redelivery arrives while the first attempt is still running", async () => {
+    mocks.recordInboundEmail.mockResolvedValue("in_flight");
+
+    expect(await handleEmailReply(EMAIL)).toBe("in_flight");
+    expect(mocks.applyDecision).not.toHaveBeenCalled();
+    expect(mocks.markInboundEmailProcessed).not.toHaveBeenCalled();
+  });
+
   it("ignores a reply from someone who is not an approver", async () => {
     const result = await handleEmailReply({
       ...EMAIL,

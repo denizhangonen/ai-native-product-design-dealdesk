@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   recordInboundMessage: vi.fn(),
   markInboundMessageProcessed: vi.fn(),
   linkRequest: vi.fn(),
+  findLinkedRequest: vi.fn(),
   postMessage: vi.fn(),
   getUserName: vi.fn(),
   parseRequest: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock("@/data/inboundMessages", () => ({
   recordInboundMessage: mocks.recordInboundMessage,
   markInboundMessageProcessed: mocks.markInboundMessageProcessed,
   linkRequest: mocks.linkRequest,
+  findLinkedRequest: mocks.findLinkedRequest,
 }));
 vi.mock("@/integrations/slack/client", () => ({
   postMessage: mocks.postMessage,
@@ -199,11 +201,32 @@ describe("handleSlackMessage", () => {
     expect(mocks.markInboundMessageProcessed).toHaveBeenCalledWith("Ev123");
   });
 
-  it("retries a delivery whose first attempt never finished", async () => {
+  it("retries a delivery whose first attempt died before creating anything", async () => {
     mocks.recordInboundMessage.mockResolvedValue("retry");
+    mocks.findLinkedRequest.mockResolvedValue(null);
 
     expect(await handleSlackMessage(MESSAGE, SLACK)).toBe("submitted");
     expect(mocks.submitRequest).toHaveBeenCalled();
+  });
+
+  // Slack redelivers after three seconds, and reading a message takes longer than
+  // that. One message used to become two requests this way.
+  it("does nothing when a redelivery arrives while the first attempt is still running", async () => {
+    mocks.recordInboundMessage.mockResolvedValue("in_flight");
+
+    expect(await handleSlackMessage(MESSAGE, SLACK)).toBe("in_flight");
+    expect(mocks.submitRequest).not.toHaveBeenCalled();
+    expect(mocks.postMessage).not.toHaveBeenCalled();
+    expect(mocks.markInboundMessageProcessed).not.toHaveBeenCalled();
+  });
+
+  it("does not create a second request when a dead attempt already created one", async () => {
+    mocks.recordInboundMessage.mockResolvedValue("retry");
+    mocks.findLinkedRequest.mockResolvedValue("req-1");
+
+    expect(await handleSlackMessage(MESSAGE, SLACK)).toBe("duplicate");
+    expect(mocks.submitRequest).not.toHaveBeenCalled();
+    expect(mocks.markInboundMessageProcessed).toHaveBeenCalledWith("Ev123");
   });
 
   it("leaves the delivery unhandled when the request could not be created", async () => {

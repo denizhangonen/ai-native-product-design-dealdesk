@@ -1,5 +1,5 @@
 import { type Executor, db } from "@/data/db";
-import type { Intake } from "@/data/inboundMessages";
+import { type Intake, claimExisting } from "@/data/intakeClaim";
 
 export type InboundEmailRecord = {
   messageId: string;
@@ -9,8 +9,8 @@ export type InboundEmailRecord = {
 };
 
 /**
- * Stores a reply once. A redelivery is only refused when the first attempt ran to
- * completion, so an approval whose first attempt failed is not dropped in silence.
+ * Stores a reply once and says whether this caller owns it. A redelivery that
+ * arrives while the first attempt is still running must not decide anything twice.
  */
 export async function recordInboundEmail(
   email: InboundEmailRecord,
@@ -24,10 +24,7 @@ export async function recordInboundEmail(
   `;
   if (inserted.length > 0) return "new";
 
-  const [existing] = await sql<{ processed_at: Date | null }[]>`
-    select processed_at from inbound_emails where message_id = ${email.messageId}
-  `;
-  return existing?.processed_at ? "duplicate" : "retry";
+  return claimExisting("inbound_emails", email.messageId, sql);
 }
 
 export async function markInboundEmailProcessed(
