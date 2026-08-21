@@ -22,7 +22,7 @@
   },
   "settings": {
     "event_subscriptions": {
-      "request_url": "https://dealdesk-gonendenizhangmailcoms-projects.vercel.app/api/slack/events",
+      "request_url": "https://ai-native-dealdesk.vercel.app/api/slack/events",
       "bot_events": [
         "message.channels"
       ]

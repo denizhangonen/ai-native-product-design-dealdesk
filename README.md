@@ -9,6 +9,8 @@ same Slack thread. Nobody opens a new app.
 This is a **working slice, not a product**. It exists to show what AI-native product design
 looks like when the software comes to the user instead of waiting to be fed.
 
+Live at **https://ai-native-dealdesk.vercel.app**
+
 ## Status
 
 The full loop works end to end against real services: a Slack request comes in, a model

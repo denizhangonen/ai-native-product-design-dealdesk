@@ -13,6 +13,11 @@ export const dynamic = "force-dynamic";
 
 const REFERENCE = /^DD-\d{1,12}$/;
 
+export async function generateMetadata({ params }: PageProps<"/r/[reference]">) {
+  const { reference } = await params;
+  return REFERENCE.test(reference) ? { title: reference } : {};
+}
+
 export default async function RequestPage({ params }: PageProps<"/r/[reference]">) {
   const { reference } = await params;
   if (!REFERENCE.test(reference)) notFound();
