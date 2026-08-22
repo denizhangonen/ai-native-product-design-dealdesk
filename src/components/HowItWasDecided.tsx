@@ -1,12 +1,21 @@
+import type { ReactNode } from "react";
 import type { DiscountRequest } from "@/domain/request";
 import type { RoutingDecision } from "@/domain/rules";
 
-function Panel({ title, footer, children }: { title: string; footer: string; children: React.ReactNode }) {
+type PanelProps = {
+  title: string;
+  footer: string;
+  children: ReactNode;
+};
+
+function Panel({ title, footer, children }: PanelProps) {
   return (
-    <section className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500">{title}</h3>
-      <p className="mt-2 text-sm">{children}</p>
-      <p className="mt-3 text-xs text-gray-500">{footer}</p>
+    <section className="rounded-2xl border border-gray-200 bg-gray-50/50 p-6 dark:border-gray-800 dark:bg-gray-900/40">
+      <h3 className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+        {title}
+      </h3>
+      <p className="mt-3 text-base leading-relaxed">{children}</p>
+      <p className="mt-4 text-sm text-gray-500">{footer}</p>
     </section>
   );
 }
@@ -25,7 +34,7 @@ export function HowItWasDecided({
   const reading = request.reading;
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid gap-5 sm:grid-cols-2">
       <Panel
         title="The model read"
         footer={

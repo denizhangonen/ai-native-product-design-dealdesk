@@ -16,7 +16,9 @@ const TONE: Record<RequestStatus, string> = {
 
 export function StatusBadge({ status }: { status: RequestStatus }) {
   return (
-    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${TONE[status]}`}>
+    <span
+      className={`inline-block rounded-full px-3 py-1 text-sm font-medium ${TONE[status]}`}
+    >
       {LABEL[status]}
     </span>
   );

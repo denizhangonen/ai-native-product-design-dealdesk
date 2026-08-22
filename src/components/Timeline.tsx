@@ -12,14 +12,22 @@ const DESCRIBE: Record<string, string> = {
 };
 
 export function Timeline({ events }: { events: AuditEvent[] }) {
+  const last = events.length - 1;
+
   return (
-    <ol className="space-y-3">
-      {events.map((event) => (
-        <li key={event.id} className="flex gap-4 text-sm">
-          <time className="w-40 shrink-0 tabular-nums text-gray-500">
+    <ol className="relative ml-2 border-l border-gray-200 dark:border-gray-800">
+      {events.map((event, index) => (
+        <li key={event.id} className="relative pb-8 pl-8 last:pb-0">
+          <span
+            aria-hidden
+            className={`absolute top-1 -left-[7px] h-3.5 w-3.5 rounded-full border-2 border-white dark:border-gray-950 ${
+              index === last ? "bg-violet-500" : "bg-gray-300 dark:bg-gray-700"
+            }`}
+          />
+          <p className="text-base font-medium">{DESCRIBE[event.type] ?? event.type}</p>
+          <time className="mt-1 block text-sm tabular-nums text-gray-500">
             {formatWhen(event.createdAt)}
           </time>
-          <span>{DESCRIBE[event.type] ?? event.type}</span>
         </li>
       ))}
     </ol>

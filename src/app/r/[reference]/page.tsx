@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Timeline } from "@/components/Timeline";
 import { listEvents } from "@/data/events";
 import { getRequestByReference } from "@/data/requests";
+import { formatWhen } from "@/components/format";
 import { formatAmount } from "@/domain/request";
 import { decideRoute } from "@/domain/rules";
 import { isFinal } from "@/domain/status";
@@ -32,33 +33,70 @@ export default async function RequestPage({ params }: PageProps<"/r/[reference]"
   const routing = decideRoute(request, getConfig().APPROVAL_THRESHOLD_PERCENT);
 
   return (
-    <main className="mx-auto max-w-2xl p-8">
-      <Link href="/" className="text-sm text-gray-500 underline-offset-2 hover:underline">
-        All requests
+    <main className="mx-auto max-w-2xl px-6 py-14 sm:px-10">
+      <Link
+        href="/"
+        className="text-sm font-medium text-violet-700 underline-offset-4 hover:underline dark:text-violet-400"
+      >
+        &larr; All requests
       </Link>
 
-      <header className="mt-4 mb-8 flex items-baseline justify-between gap-4">
-        <h1 className="font-mono text-2xl font-semibold">{request.reference}</h1>
-        <StatusBadge status={request.status} />
+      <header className="mt-6 mb-10">
+        <div className="flex items-baseline justify-between gap-4">
+          <h1 className="text-3xl font-semibold tracking-tight">
+            <span className="font-mono">{request.reference}</span>
+            <span className="text-gray-400 dark:text-gray-600"> · </span>
+            {request.customer}
+          </h1>
+          <StatusBadge status={request.status} />
+        </div>
+        <p className="mt-3 max-w-xl text-base text-gray-600 dark:text-gray-400">
+          The full trail: what was asked, what the model read, which rule fired, who decided,
+          when.
+        </p>
       </header>
 
-      <dl className="mb-10 grid grid-cols-[8rem_1fr] gap-y-2 text-sm">
-        <dt className="text-gray-500">Customer</dt>
-        <dd>{request.customer}</dd>
-        <dt className="text-gray-500">Deal value</dt>
-        <dd className="tabular-nums">{formatAmount(request)}</dd>
-        <dt className="text-gray-500">Discount</dt>
-        <dd className="tabular-nums">{request.discountPercent}%</dd>
+      <dl className="mb-12 grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
+        <div>
+          <dt className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+            Deal value
+          </dt>
+          <dd className="mt-1.5 text-lg font-medium tabular-nums">{formatAmount(request)}</dd>
+        </div>
+        <div>
+          <dt className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+            Discount
+          </dt>
+          <dd className="mt-1.5 text-lg font-medium tabular-nums">{request.discountPercent}%</dd>
+        </div>
+        <div>
+          <dt className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+            Requested
+          </dt>
+          <dd className="mt-1.5 text-sm tabular-nums whitespace-nowrap text-gray-700 dark:text-gray-300">
+            {formatWhen(request.createdAt)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+            Last change
+          </dt>
+          <dd className="mt-1.5 text-sm tabular-nums whitespace-nowrap text-gray-700 dark:text-gray-300">
+            {formatWhen(request.updatedAt)}
+          </dd>
+        </div>
       </dl>
 
-      <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-gray-500">
+      <h2 className="mb-5 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
         How this was decided
       </h2>
-      <div className="mb-10">
+      <div className="mb-12">
         <HowItWasDecided request={request} routing={routing} />
       </div>
 
-      <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-gray-500">Timeline</h2>
+      <h2 className="mb-6 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+        Timeline
+      </h2>
       <Timeline events={events} />
       <AutoRefresh everySeconds={5} active={!isFinal(request.status)} />
     </main>
