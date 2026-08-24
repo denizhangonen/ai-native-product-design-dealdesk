@@ -24,83 +24,75 @@ function normalise(message: string): string {
 }
 
 const EMPTY: Extraction = {
-  customer: null,
-  amount: null,
-  currency: null,
-  discountPercent: null,
+  supplier: null,
+  event: null,
+  extensionDays: null,
   reason: null,
   rationale: null,
   confidence: 0,
 };
 
-const CURRENCY_SIGNS: Record<string, string> = {
-  $: "USD",
-  "€": "EUR",
-  "£": "GBP",
-};
+// Whole words only: "extra days" must not read as "a day".
+const WORD_DAYS: Array<[RegExp, number]> = [
+  [/\b(?:a|one) day\b/, 1],
+  [/\btwo days\b/, 2],
+  [/\bthree days\b/, 3],
+  [/\b(?:a|one) week\b/, 7],
+  [/\btwo weeks\b/, 14],
+];
 
-function readDiscount(message: string): number | null {
-  const match = message.match(/(\d+(?:\.\d+)?)\s*(?:%|percent\b|per cent\b)/i);
-  return match ? Number(match[1]) : null;
+function readDays(message: string): number | null {
+  const lower = message.toLowerCase();
+  for (const [phrase, days] of WORD_DAYS) {
+    if (phrase.test(lower)) return days;
+  }
+  const hours = lower.match(/(\d+)\s*(?:hours|hrs)\b/);
+  if (hours) return Math.max(1, Math.round(Number(hours[1]) / 24));
+
+  const days = lower.match(/(\d+)\s*(?:more|extra|additional)?\s*(?:business\s+|working\s+)?days?\b/);
+  return days ? Number(days[1]) : null;
 }
 
-function readAmount(message: string): number | null {
-  const withoutDiscount = message.replace(/\d+(?:\.\d+)?\s*(?:%|percent\b|per cent\b)/gi, " ");
+function readEvent(message: string): string | null {
+  const match = message.match(/\b(RF[PQIX]-\d+)\b/i);
+  return match ? match[1].toUpperCase() : null;
+}
 
-  const scaled = withoutDiscount.match(/(\d+(?:\.\d+)?)\s*([km])\b/i);
-  if (scaled) {
-    const factor = scaled[2].toLowerCase() === "m" ? 1_000_000 : 1_000;
-    return Number(scaled[1]) * factor;
-  }
-
-  const plain = withoutDiscount.match(/[$€£]?\s*(\d[\d,]{2,})/);
-  if (plain) {
-    const value = Number(plain[1].replace(/,/g, ""));
-    return Number.isFinite(value) && value >= 100 ? value : null;
+function readSupplier(message: string): string | null {
+  // "<Supplier> asked for ..." or "give <Supplier> ..." or "for <Supplier> on ..."
+  const patterns = [
+    /^([A-Z][A-Za-z0-9&.'-]*(?:\s+[A-Z][A-Za-z0-9&.'-]*)*)\s+(?:asked|asks|wants|needs|is asking|are asking)\b/,
+    /\b(?:give|grant|for)\s+([A-Z][A-Za-z0-9&.'-]*(?:\s+[A-Z][A-Za-z0-9&.'-]*)*)(?=\s+(?:a|an|\d|on|another|more)\b|\s*[,.?]|$)/,
+  ];
+  for (const pattern of patterns) {
+    const match = message.match(pattern);
+    if (match) return match[1].trim();
   }
   return null;
 }
 
-function readCurrency(message: string): string | null {
-  const code = message.match(/\b(usd|eur|gbp)\b/i);
-  if (code) return code[1].toUpperCase();
-
-  const sign = message.match(/[$€£]/);
-  return sign ? CURRENCY_SIGNS[sign[0]] : null;
-}
-
-function readCustomer(message: string): string | null {
-  const match = message.match(
-    /\bfor\s+([A-Za-z0-9][A-Za-z0-9&.'-]*(?:\s+[A-Za-z0-9&.'-]+)*?)(?=\s*[,.]|\s+(?:on|at|the|deal|renewal|contract|account)\b|$)/i,
-  );
-  return match ? match[1].trim() : null;
-}
-
 function readReason(message: string): string | null {
-  const match = message.match(
-    /\b(?:because|since|as)\s+(.+)$|,\s*([^,]*\b(?:risk|churn|competit)[^,]*)$/i,
-  );
+  const match = message.match(/\b(?:because|since|as)\s+(.+)$|[,?]\s*([^,?]*\b(?:sick|flood|power|delay|late|holiday|strike|customs|waiting)[^,?]*)$/i);
   const reason = match?.[1] ?? match?.[2];
   return reason ? reason.trim().replace(/[.!]$/, "") : null;
 }
 
 function extract(message: string): Extraction {
-  const discountPercent = readDiscount(message);
-  const amount = readAmount(message);
-  const customer = readCustomer(message);
+  const extensionDays = readDays(message);
+  const event = readEvent(message);
+  const supplier = readSupplier(message);
 
-  if (discountPercent === null && amount === null && customer === null) return EMPTY;
+  if (extensionDays === null && event === null && supplier === null) return EMPTY;
 
-  const parts = { "a discount": discountPercent, "a deal value": amount, "a customer": customer };
+  const parts = { "a supplier": supplier, "an event": event, "a number of days": extensionDays };
   const read = Object.entries(parts)
     .filter(([, value]) => value !== null)
     .map(([label]) => label);
 
   return {
-    customer,
-    amount,
-    currency: readCurrency(message),
-    discountPercent,
+    supplier,
+    event,
+    extensionDays,
     reason: readReason(message),
     rationale: `Matched ${read.join(", ")} in the message by pattern, without a model.`,
     // Three of three reads as a confident extraction; fewer deliberately is not.
@@ -113,22 +105,22 @@ const REJECT =
   /\b(reject(ed)?|declin(e|ed)|denied?|no can do|not approved|too (much|steep)|^no\b)\b/i;
 
 function readDecision(reply: string): DecisionReading {
-  const counter = reply.match(/(\d+(?:\.\d+)?)\s*(?:%|percent\b)/i);
-  const counterPercent = counter ? Number(counter[1]) : null;
+  const counter = reply.match(/(\d+)\s*days?\b/i);
+  const counterDays = counter ? Number(counter[1]) : null;
 
   const approves = APPROVE.test(reply);
-  const rejects = REJECT.test(reply) || (!approves && counterPercent !== null);
+  const rejects = REJECT.test(reply) || (!approves && counterDays !== null);
 
   // Saying both, or neither, is exactly the case that must not be guessed at.
   if (approves === rejects) {
-    return { decision: "unclear", note: null, counterPercent, confidence: 0.9 };
+    return { decision: "unclear", note: null, counterDays, confidence: 0.9 };
   }
 
   const note = reply.match(/\b(?:but|only|provided|as long as)\b\s*(.+)$/i)?.[0]?.trim() ?? null;
   return {
     decision: approves ? "approve" : "reject",
     note: note && note.length > 0 ? note.replace(/[.!]$/, "") : null,
-    counterPercent,
+    counterDays,
     confidence: 0.95,
   };
 }

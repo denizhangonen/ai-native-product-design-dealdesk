@@ -21,10 +21,10 @@ afterEach(() => {
 });
 
 const email = {
-  to: "finance@example.com",
+  to: "lead@example.com",
   from: "Dealdesk <approvals@example.com>",
   replyTo: "approvals@example.com",
-  subject: "[DD-1] Discount approval",
+  subject: "[DD-1] Deadline extension",
   text: "body",
 };
 
@@ -53,11 +53,11 @@ describe("createResendProvider", () => {
 
     await createResendProvider(KEY).send({
       ...email,
-      idempotencyKey: "approval:DD-1:finance",
+      idempotencyKey: "approval:DD-1:lead",
     });
 
     const [, init] = (fetchMock as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(init.headers["Idempotency-Key"]).toBe("approval:DD-1:finance");
+    expect(init.headers["Idempotency-Key"]).toBe("approval:DD-1:lead");
   });
 
   it("sends no idempotency header when there is no key", async () => {
@@ -70,14 +70,14 @@ describe("createResendProvider", () => {
     expect(init.headers["Idempotency-Key"]).toBeUndefined();
   });
 
-  it("throws without echoing the error body, which can carry customer detail", async () => {
-    vi.stubGlobal("fetch", respond({ name: "validation_error", message: "Acme deal" }, 422));
+  it("throws without echoing the error body, which can carry supplier detail", async () => {
+    vi.stubGlobal("fetch", respond({ name: "validation_error", message: "Meridian Supply RFP-2041" }, 422));
 
     const failure = createResendProvider(KEY).send(email);
 
     await expect(failure).rejects.toBeInstanceOf(ResendApiError);
     await expect(failure).rejects.toThrow("422 validation_error");
-    await expect(failure).rejects.not.toThrow(/Acme/);
+    await expect(failure).rejects.not.toThrow(/Meridian/);
   });
 });
 

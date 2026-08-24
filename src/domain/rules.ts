@@ -1,6 +1,7 @@
-import type { DiscountRequest } from "@/domain/request";
+import type { DeadlineRequest } from "@/domain/request";
+import { formatExtension } from "@/domain/request";
 
-export type Route = "auto" | "finance";
+export type Route = "auto" | "lead";
 
 export type RoutingDecision = {
   route: Route;
@@ -11,39 +12,40 @@ export type RoutingDecision = {
  * The only place that decides who must approve. The model never decides this.
  */
 export function decideRoute(
-  request: Pick<DiscountRequest, "discountPercent">,
-  thresholdPercent: number,
+  request: Pick<DeadlineRequest, "extensionDays">,
+  maxAutoDays: number,
 ): RoutingDecision {
-  const { discountPercent } = request;
+  const { extensionDays } = request;
+  const limit = `${maxAutoDays}-day limit`;
 
-  if (discountPercent > thresholdPercent) {
+  if (extensionDays > maxAutoDays) {
     return {
-      route: "finance",
-      reason: `${discountPercent}% is above the ${thresholdPercent}% limit, so finance must approve`,
+      route: "lead",
+      reason: `${formatExtension(extensionDays)} is above the ${limit}, so the sourcing lead must approve`,
     };
   }
 
   return {
     route: "auto",
-    reason: `${discountPercent}% is within the ${thresholdPercent}% limit`,
+    reason: `${formatExtension(extensionDays)} is within the ${limit}`,
   };
 }
 
 export type CounterReading = {
   decision: "approve" | "reject";
-  counterPercent: number | null;
+  counterDays: number | null;
 };
 
 /**
  * What an approver's counter offer means. A counter at or above what was asked for
- * grants the request; only a lower one refuses it. A model reading English kept
+ * grants the request; only a shorter one refuses it. A model reading English kept
  * calling a more generous offer a rejection, so the judgement lives here instead.
  */
 export function decideFromCounter(
   reading: CounterReading,
-  requestedPercent: number,
+  requestedDays: number,
 ): "approve" | "reject" {
-  if (reading.counterPercent !== null && reading.counterPercent >= requestedPercent) {
+  if (reading.counterDays !== null && reading.counterDays >= requestedDays) {
     return "approve";
   }
   return reading.decision;

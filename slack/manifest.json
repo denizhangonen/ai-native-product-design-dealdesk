@@ -1,7 +1,7 @@
 {
   "display_information": {
     "name": "Dealdesk",
-    "description": "Discount approvals without leaving Slack",
+    "description": "Supplier deadline extensions without leaving Slack",
     "background_color": "#1f2933"
   },
   "features": {

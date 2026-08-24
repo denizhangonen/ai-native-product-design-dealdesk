@@ -10,7 +10,7 @@ import {
 import { getConfig } from "@/config";
 
 const TIMEOUT_MS = 10_000;
-// A discount request or a decision is short. Anything longer is a quoted thread,
+// An extension request or a decision is short. Anything longer is a quoted thread,
 // a paste, or an attack, and sending it on would cost money for no benefit.
 const MAX_INPUT_CHARS = 2_000;
 const ATTEMPTS = 2;
@@ -70,7 +70,7 @@ export async function parseRequest(message: string): Promise<ParseOutcome> {
   if (extraction.confidence < minConfidence) {
     return {
       kind: "unreadable",
-      reason: "not recognised as a discount request",
+      reason: "not recognised as an extension request",
     };
   }
 

@@ -30,8 +30,8 @@ function received(over: Record<string, unknown> = {}): string {
     type: "email.received",
     data: {
       email_id: "abc-123",
-      from: "finance@example.com",
-      subject: "Re: [DD-1] Discount approval",
+      from: "lead@example.com",
+      subject: "Re: [DD-1] Deadline extension",
       ...over,
     },
   });
@@ -71,8 +71,8 @@ describe("readInboundEmail with Resend", () => {
       kind: "ok",
       email: {
         messageId: "abc-123",
-        from: "finance@example.com",
-        subject: "Re: [DD-1] Discount approval",
+        from: "lead@example.com",
+        subject: "Re: [DD-1] Deadline extension",
         body: "approved",
       },
     });
@@ -195,7 +195,7 @@ describe("readInboundEmail with our own relay", () => {
   it("reads a signed delivery", async () => {
     const body = JSON.stringify({
       messageId: "m-1",
-      from: "finance@example.com",
+      from: "lead@example.com",
       subject: "Re: [DD-1]",
       body: "approved",
     });
@@ -204,7 +204,7 @@ describe("readInboundEmail with our own relay", () => {
       kind: "ok",
       email: {
         messageId: "m-1",
-        from: "finance@example.com",
+        from: "lead@example.com",
         subject: "Re: [DD-1]",
         body: "approved",
       },

@@ -6,7 +6,6 @@ vi.mock("@/config", () => ({
   getConfig: () => ({
     LLM_PROVIDER: "fake",
     MIN_PARSE_CONFIDENCE: 0.6,
-    DEFAULT_CURRENCY: "USD",
   }),
 }));
 
@@ -16,16 +15,16 @@ afterEach(() => {
 });
 
 function fixture(message: string, extraction: Record<string, unknown>) {
-  setFixture(message, JSON.stringify({ currency: null, reason: null, ...extraction }));
+  setFixture(message, JSON.stringify({ reason: null, ...extraction }));
 }
 
 describe("parseRequest", () => {
   it("reads a complete request", async () => {
     fixture("m", {
-      customer: "Acme",
-      amount: 48000,
-      discountPercent: 20,
-      reason: "renewal at risk",
+      supplier: "Meridian Supply",
+      event: "RFP-2041",
+      extensionDays: 5,
+      reason: "their plant lost power",
       confidence: 0.95,
     });
 
@@ -35,11 +34,10 @@ describe("parseRequest", () => {
       kind: "parsed",
       model: "fake",
       extraction: {
-        customer: "Acme",
-        amount: 48000,
-        currency: null,
-        discountPercent: 20,
-        reason: "renewal at risk",
+        supplier: "Meridian Supply",
+        event: "RFP-2041",
+        extensionDays: 5,
+        reason: "their plant lost power",
         rationale: null,
         confidence: 0.95,
       },
@@ -47,17 +45,13 @@ describe("parseRequest", () => {
   });
 
   it.each([
+    ["the days", { supplier: "Meridian", event: "RFP-1", extensionDays: null }, ["extensionDays"]],
+    ["the supplier", { supplier: null, event: "RFP-1", extensionDays: 5 }, ["supplier"]],
+    ["the event", { supplier: "Meridian", event: null, extensionDays: 5 }, ["event"]],
     [
-      "the discount",
-      { customer: "Acme", amount: 48000, discountPercent: null },
-      ["discountPercent"],
-    ],
-    ["the customer", { customer: null, amount: 48000, discountPercent: 20 }, ["customer"]],
-    ["the amount", { customer: "Acme", amount: null, discountPercent: 20 }, ["amount"]],
-    [
-      "everything but the discount",
-      { customer: null, amount: null, discountPercent: 20 },
-      ["customer", "amount"],
+      "everything but the days",
+      { supplier: null, event: null, extensionDays: 5 },
+      ["supplier", "event"],
     ],
   ])("reports %s as missing", async (_label, extraction, missing) => {
     fixture("m", { ...extraction, confidence: 0.9 });
@@ -69,25 +63,20 @@ describe("parseRequest", () => {
   });
 
   it("refuses to guess when the model is unsure", async () => {
-    fixture("m", {
-      customer: "Acme",
-      amount: 48000,
-      discountPercent: 20,
-      confidence: 0.4,
-    });
+    fixture("m", { supplier: "Meridian", event: "RFP-1", extensionDays: 5, confidence: 0.4 });
 
     const outcome = await parseRequest("m");
 
     expect(outcome).toEqual({
       kind: "unreadable",
-      reason: "not recognised as a discount request",
+      reason: "not recognised as an extension request",
     });
   });
 
   it.each([
-    ["prose instead of JSON", "I think they want 20 percent"],
-    ["a fenced code block", '```json\n{"customer":"Acme"}\n```'],
-    ["truncated JSON", '{"customer":"Acme","amount":'],
+    ["prose instead of JSON", "I think they want a week"],
+    ["a fenced code block", '```json\n{"supplier":"Meridian"}\n```'],
+    ["truncated JSON", '{"supplier":"Meridian","event":'],
     ["an empty answer", ""],
   ])("rejects %s", async (_label, response) => {
     setFixture("m", response);
@@ -101,14 +90,12 @@ describe("parseRequest", () => {
   });
 
   it.each([
-    ["a discount above 100", { customer: "A", amount: 1, discountPercent: 120, confidence: 0.9 }],
-    ["a negative amount", { customer: "A", amount: -5, discountPercent: 20, confidence: 0.9 }],
-    ["a confidence above 1", { customer: "A", amount: 1, discountPercent: 20, confidence: 4 }],
-    ["a missing confidence", { customer: "A", amount: 1, discountPercent: 20 }],
-    [
-      "a customer that is a number",
-      { customer: 42, amount: 1, discountPercent: 20, confidence: 1 },
-    ],
+    ["more than a year of days", { supplier: "A", event: "E", extensionDays: 400, confidence: 0.9 }],
+    ["zero days", { supplier: "A", event: "E", extensionDays: 0, confidence: 0.9 }],
+    ["a fraction of a day", { supplier: "A", event: "E", extensionDays: 1.5, confidence: 0.9 }],
+    ["a confidence above 1", { supplier: "A", event: "E", extensionDays: 2, confidence: 4 }],
+    ["a missing confidence", { supplier: "A", event: "E", extensionDays: 2 }],
+    ["a supplier that is a number", { supplier: 42, event: "E", extensionDays: 2, confidence: 1 }],
   ])("refuses model output with %s", async (_label, extraction) => {
     fixture("m", extraction);
 
@@ -119,12 +106,11 @@ describe("parseRequest", () => {
     setFixture(
       "m",
       JSON.stringify({
-        customer: "Acme",
-        amount: 48000,
-        currency: null,
-        discountPercent: 20,
+        supplier: "Meridian Supply",
+        event: "RFP-2041",
+        extensionDays: 5,
         reason: null,
-        rationale: "Discount and value are both stated plainly.",
+        rationale: "Supplier, event and days are all stated plainly.",
         confidence: 0.95,
       }),
     );
@@ -132,15 +118,15 @@ describe("parseRequest", () => {
     const outcome = await parseRequest("m");
 
     expect(outcome.kind === "parsed" && outcome.extraction.rationale).toBe(
-      "Discount and value are both stated plainly.",
+      "Supplier, event and days are all stated plainly.",
     );
   });
 
   it("refuses a note long enough to be an essay rather than a note", async () => {
     fixture("m", {
-      customer: "Acme",
-      amount: 48000,
-      discountPercent: 20,
+      supplier: "Meridian Supply",
+      event: "RFP-2041",
+      extensionDays: 5,
       rationale: "x".repeat(201),
       confidence: 0.95,
     });
@@ -152,10 +138,9 @@ describe("parseRequest", () => {
     const responses = [
       "not json at all",
       JSON.stringify({
-        customer: "Acme",
-        amount: 48000,
-        currency: null,
-        discountPercent: 20,
+        supplier: "Meridian Supply",
+        event: "RFP-2041",
+        extensionDays: 5,
         reason: null,
         confidence: 0.9,
       }),
@@ -177,10 +162,9 @@ describe("parseRequest", () => {
     const provider = await import("@/ai/providers/fake");
     const spy = vi.spyOn(provider.fakeProvider, "complete").mockResolvedValue(
       JSON.stringify({
-        customer: "Acme",
-        amount: 1,
-        currency: null,
-        discountPercent: 5,
+        supplier: "Meridian Supply",
+        event: "RFP-2041",
+        extensionDays: 2,
         reason: null,
         confidence: 0.9,
       }),

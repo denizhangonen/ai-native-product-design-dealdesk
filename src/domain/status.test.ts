@@ -10,10 +10,10 @@ import {
 } from "@/domain/status";
 
 const ALLOWED: Array<[RequestStatus, RequestEvent, RequestStatus]> = [
-  ["pending_review", "submitted", "pending_finance"],
+  ["pending_review", "submitted", "pending_lead"],
   ["pending_review", "auto_approved", "approved"],
-  ["pending_finance", "finance_approved", "approved"],
-  ["pending_finance", "finance_rejected", "rejected"],
+  ["pending_lead", "lead_approved", "approved"],
+  ["pending_lead", "lead_rejected", "rejected"],
 ];
 
 describe("transition", () => {

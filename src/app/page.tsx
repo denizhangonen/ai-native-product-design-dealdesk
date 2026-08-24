@@ -16,7 +16,7 @@ export default async function Home() {
         <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
           Dealdesk
         </p>
-        <h1 className="text-3xl font-semibold tracking-tight">Discount approvals</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Deadline extensions</h1>
         <p className="mt-3 max-w-xl text-base text-gray-600 dark:text-gray-400">
           Approvals run where work happens - Slack and email. This is the read-only window.
         </p>

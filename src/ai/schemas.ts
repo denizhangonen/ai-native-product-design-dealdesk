@@ -7,14 +7,10 @@ import { z } from "zod";
  * The model extracts only. It never states a route, a status, or an approver.
  */
 export const extractionSchema = z.object({
-  customer: z.string().trim().min(1).nullable(),
-  /** Major units, e.g. 48000 for a 48k deal. */
-  amount: z.number().nonnegative().finite().nullable(),
-  currency: z
-    .string()
-    .regex(/^[A-Za-z]{3}$/)
-    .nullable(),
-  discountPercent: z.number().min(0).max(100).nullable(),
+  supplier: z.string().trim().min(1).nullable(),
+  /** The sourcing event reference, e.g. RFP-2041. */
+  event: z.string().trim().min(1).nullable(),
+  extensionDays: z.number().int().min(1).max(365).nullable(),
   reason: z.string().trim().min(1).nullable(),
   /**
    * One line on how the message was read. Capped so it stays a note, not an essay,
@@ -29,19 +25,19 @@ export type Extraction = z.infer<typeof extractionSchema>;
 
 /** An extraction that has every field a request needs. */
 export type CompleteExtraction = Extraction & {
-  customer: string;
-  amount: number;
-  discountPercent: number;
+  supplier: string;
+  event: string;
+  extensionDays: number;
 };
 
-export const REQUIRED_FIELDS = ["customer", "amount", "discountPercent"] as const;
+export const REQUIRED_FIELDS = ["supplier", "event", "extensionDays"] as const;
 
 export type RequiredField = (typeof REQUIRED_FIELDS)[number];
 
 const LABELS: Record<RequiredField, string> = {
-  customer: "which customer",
-  amount: "the deal value",
-  discountPercent: "the discount percentage",
+  supplier: "which supplier",
+  event: "the sourcing event",
+  extensionDays: "how many days",
 };
 
 /** Code decides what is missing, not the model. */
@@ -60,7 +56,7 @@ export function describeMissing(fields: RequiredField[]): string {
 export const decisionSchema = z.object({
   decision: z.enum(["approve", "reject", "unclear"]),
   note: z.string().trim().min(1).nullable(),
-  counterPercent: z.number().min(0).max(100).nullable(),
+  counterDays: z.number().int().min(0).max(365).nullable(),
   confidence: z.number().min(0).max(1),
 });
 

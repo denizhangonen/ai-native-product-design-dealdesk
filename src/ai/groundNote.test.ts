@@ -14,7 +14,7 @@ describe("quotedNote", () => {
 
   // The reply said the opposite. A note like this reached a rep once.
   it("drops a note the model invented", () => {
-    const note = "A 50% discount is not acceptable, but a counter can be negotiated";
+    const note = "A 10 day extension is not acceptable, but a counter can be negotiated";
     expect(quotedNote(note, "You can even make it like 50% mate!")).toBeNull();
   });
 

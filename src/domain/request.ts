@@ -1,6 +1,6 @@
 import type { RequestStatus } from "@/domain/status";
 
-export type ApproverRole = "finance";
+export type ApproverRole = "sourcing_lead";
 
 /** How the model read the message. It never decides anything; it only reports. */
 export type Reading = {
@@ -14,15 +14,15 @@ export type Requester = {
   displayName: string;
 };
 
-export type DiscountRequest = {
+export type DeadlineRequest = {
   id: string;
   /** Human-facing identifier used in email subjects, e.g. DD-1042. */
   reference: string;
   requester: Requester;
-  customer: string;
-  amountCents: number;
-  currency: string;
-  discountPercent: number;
+  supplier: string;
+  /** The sourcing event the deadline belongs to, e.g. RFP-2041. */
+  event: string;
+  extensionDays: number;
   reason: string | null;
   status: RequestStatus;
   approverRole: ApproverRole | null;
@@ -31,10 +31,6 @@ export type DiscountRequest = {
   updatedAt: Date;
 };
 
-export function formatAmount(request: Pick<DiscountRequest, "amountCents" | "currency">): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: request.currency,
-    maximumFractionDigits: 0,
-  }).format(request.amountCents / 100);
+export function formatExtension(days: number): string {
+  return days === 1 ? "1 day" : `${days} days`;
 }

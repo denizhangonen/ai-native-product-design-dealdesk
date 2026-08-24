@@ -23,7 +23,7 @@ async function call<T>(path: string, apiKey: string, init: RequestInit = {}): Pr
   });
 
   if (!response.ok) {
-    // Name only: the error body can echo the message, which carries customer detail.
+    // Name only: the error body can echo the message, which carries supplier detail.
     const body = (await response.json().catch(() => ({}))) as { name?: string };
     throw new ResendApiError(response.status, body.name ?? "unknown");
   }

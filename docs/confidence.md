@@ -9,7 +9,7 @@ system does in each case and how that is proven.
 **The model extracts; code decides.** A language model turns a Slack message into
 fields and an email reply into approve/reject/unclear. It never chooses who approves,
 never changes a status, and its output is validated against a strict schema before
-anything downstream sees it. The routing rule (above 15% needs finance) lives in
+anything downstream sees it. The routing rule (more than 3 days needs the sourcing lead) lives in
 `src/domain/rules.ts`, a pure function with a test on the boundary. There is a test
 asserting the model's output can never carry a route or a status.
 
@@ -28,10 +28,10 @@ note, loses the note and nothing else: the request is still read, routed and ans
 
 | What goes wrong | What the system does | Proven by |
 | --- | --- | --- |
-| Message is not a discount request | Replies "could not read that", stores nothing | Unit test, live |
-| Message is missing the customer, amount, or discount | Asks for the missing piece by name, stores nothing | Unit test, live |
+| Message is not an extension request | Replies "could not read that", stores nothing | Unit test, live |
+| Message is missing the supplier, the event, or the number of days | Asks for the missing piece by name, stores nothing | Unit test, live |
 | Model returns prose, a code fence, or truncated JSON | One retry, then treated as not understood | Unit test |
-| Model returns a discount of 120% or a negative amount | Rejected by schema, treated as not understood | Unit test |
+| Model returns 400 days, zero days, or a fraction of a day | Rejected by schema, treated as not understood | Unit test |
 | Model is unsure (low confidence) | Treated as not understood rather than guessed | Unit test |
 | Model times out | Gives up after 10 seconds, replies in thread | Unit test |
 | Slack delivers the same event twice | Second delivery is a no-op (unique `event_id`) | Unit test, live |
@@ -47,9 +47,9 @@ note, loses the note and nothing else: the request is still read, routed and ans
 | Reply whose display name impersonates an approver | Refused: only the real address counts | Unit test, live |
 | Reply from a malformed From header | Refused outright, never salvaged into an address | Unit test |
 | No approvers configured | Nobody can approve (fails closed) | Unit test |
-| Reply is ambiguous ("what's the renewal date?") | Clarification email, state unchanged | Unit test, live |
-| Reply offers a smaller discount | Recorded as a rejection with the counter offer | Unit test, live |
-| Reply offers a larger discount than asked for | Treated as an approval, decided by a rule not a prompt | Unit test, found live |
+| Reply is ambiguous ("when does the event close?") | Clarification email, state unchanged | Unit test, live |
+| Reply offers fewer days | Recorded as a rejection with the counter offer | Unit test, live |
+| Reply offers more days than asked for | Treated as an approval, decided by a rule not a prompt | Unit test, found live |
 | Model writes a condition the approver never wrote | The note is dropped rather than passed on as theirs | Unit test, found live |
 | Same reply email redelivered | No-op (unique `message_id`) | Unit test, live |
 | A delivery fails halfway through | Not marked handled, so a redelivery retries it | Unit test |
@@ -77,8 +77,8 @@ note, loses the note and nothing else: the request is still read, routed and ans
 ## What a reader of the public page cannot see
 
 The status page has no login, so it shows no requester names, no email addresses, no
-justifications given by the representative, and no approver notes. It shows references,
-synthetic customer names, amounts, percentages, statuses, times, and the model's
+justifications given by the manager, and no approver notes. It shows references,
+synthetic supplier names, event references, extension lengths, statuses, times, and the model's
 one-line note on how it read the message.
 
 That note is written by a model about a message this project does not control, which is

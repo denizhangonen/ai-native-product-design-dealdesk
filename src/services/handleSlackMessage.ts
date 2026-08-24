@@ -1,6 +1,5 @@
 import { parseRequest } from "@/ai/parseRequest";
 import type { SlackConfig } from "@/config";
-import { getConfig } from "@/config";
 import {
   findLinkedRequest,
   linkRequest,
@@ -58,15 +57,13 @@ export async function handleSlackMessage(
     return "needs_detail";
   }
 
-  const { customer, amount, currency, discountPercent, reason, rationale, confidence } =
-    outcome.extraction;
+  const { supplier, event, extensionDays, reason, rationale, confidence } = outcome.extraction;
 
   const { request, routing } = await submitRequest({
     requester: { slackUserId: message.slackUserId, displayName },
-    customer,
-    amountCents: Math.round(amount * 100),
-    currency: currency ?? getConfig().DEFAULT_CURRENCY,
-    discountPercent,
+    supplier,
+    event,
+    extensionDays,
     reason,
     reading: { confidence, rationale, model: outcome.model },
   });
@@ -76,7 +73,7 @@ export async function handleSlackMessage(
   await linkRequest(message.eventId, request.id);
   await markInboundMessageProcessed(message.eventId);
 
-  if (routing.route === "finance") {
+  if (routing.route === "lead") {
     // The request is already saved, so a mail outage delays approval, it does not lose it.
     try {
       await sendApprovalRequest(request);

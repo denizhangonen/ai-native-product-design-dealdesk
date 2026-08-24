@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { StatusBadge } from "@/components/StatusBadge";
-import { type DiscountRequest, formatAmount } from "@/domain/request";
+import { type DeadlineRequest, formatExtension } from "@/domain/request";
 
-export function RequestTable({ requests }: { requests: DiscountRequest[] }) {
+export function RequestTable({ requests }: { requests: DeadlineRequest[] }) {
   if (requests.length === 0) {
     return <p className="text-gray-500">No requests yet.</p>;
   }
@@ -13,9 +13,9 @@ export function RequestTable({ requests }: { requests: DiscountRequest[] }) {
         <thead className="text-left text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
           <tr>
             <th className="py-3 pr-6">Ref</th>
-            <th className="py-3 pr-6">Customer</th>
-            <th className="py-3 pr-6">Deal</th>
-            <th className="py-3 pr-6">Discount</th>
+            <th className="py-3 pr-6">Supplier</th>
+            <th className="py-3 pr-6">Event</th>
+            <th className="py-3 pr-6">Extension</th>
             <th className="py-3">Status</th>
           </tr>
         </thead>
@@ -33,12 +33,12 @@ export function RequestTable({ requests }: { requests: DiscountRequest[] }) {
                   {request.reference}
                 </Link>
               </td>
-              <td className="py-4 pr-6 font-medium">{request.customer}</td>
-              <td className="py-4 pr-6 tabular-nums text-gray-600 dark:text-gray-300">
-                {formatAmount(request)}
+              <td className="py-4 pr-6 font-medium">{request.supplier}</td>
+              <td className="py-4 pr-6 font-mono text-[15px] text-gray-600 dark:text-gray-300">
+                {request.event}
               </td>
               <td className="py-4 pr-6 tabular-nums text-gray-600 dark:text-gray-300">
-                {request.discountPercent}%
+                {formatExtension(request.extensionDays)}
               </td>
               <td className="py-4">
                 <StatusBadge status={request.status} />

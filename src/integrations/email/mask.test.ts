@@ -3,11 +3,11 @@ import { maskAddress } from "@/integrations/email/mask";
 
 describe("maskAddress", () => {
   it("keeps the domain and drops the person", () => {
-    expect(maskAddress("finance@example.com")).toBe("***@example.com");
+    expect(maskAddress("lead@example.com")).toBe("***@example.com");
   });
 
   it("handles an address inside a display name", () => {
-    expect(maskAddress("Dee Finance <finance@example.com>")).toBe("***@example.com");
+    expect(maskAddress("Dee Lead <lead@example.com>")).toBe("***@example.com");
   });
 
   it.each(["", "not-an-address", "trailing@"])("hides %s entirely", (value) => {

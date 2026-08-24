@@ -5,7 +5,7 @@ import { type DecisionReading, decisionSchema } from "@/ai/schemas";
 import { getConfig } from "@/config";
 
 const TIMEOUT_MS = 10_000;
-// A discount request or a decision is short. Anything longer is a quoted thread,
+// An extension request or a decision is short. Anything longer is a quoted thread,
 // a paste, or an attack, and sending it on would cost money for no benefit.
 const MAX_INPUT_CHARS = 2_000;
 const ATTEMPTS = 2;
@@ -70,7 +70,7 @@ export async function parseDecision(reply: string): Promise<DecisionOutcome> {
     return { kind: "unclear", reason: "not confident enough to act" };
   }
 
-  // The note is passed on to the rep as finance's own words, so it must be theirs.
+  // The note is passed on to the manager as the lead's own words, so it must be theirs.
   const note = quotedNote(reading.note, reply);
   if (reading.note && !note) {
     console.warn({ event: "decision_note_not_in_reply" });

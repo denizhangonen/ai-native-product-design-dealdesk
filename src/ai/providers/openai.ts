@@ -41,7 +41,7 @@ export function createOpenAiProvider(options: OpenAiOptions): LlmProvider {
       });
 
       if (!response.ok) {
-        // Code only: the error body can echo the request, which carries customer detail.
+        // Code only: the error body can echo the request, which carries supplier detail.
         const body = (await response.json().catch(() => ({}))) as {
           error?: { code?: string; type?: string };
         };

@@ -1,54 +1,58 @@
 import { describe, expect, it } from "vitest";
 import { decideFromCounter, decideRoute } from "@/domain/rules";
 
-const THRESHOLD = 15;
+const MAX_AUTO_DAYS = 3;
 
 describe("decideRoute", () => {
-  it.each([0, 1, 14.99, 15])("keeps %s%% automatic, at or below the limit", (discountPercent) => {
-    expect(decideRoute({ discountPercent }, THRESHOLD).route).toBe("auto");
+  it.each([1, 2, 3])("keeps %s days automatic, at or below the limit", (extensionDays) => {
+    expect(decideRoute({ extensionDays }, MAX_AUTO_DAYS).route).toBe("auto");
   });
 
-  it.each([15.01, 16, 100])("sends %s%% to finance, above the limit", (discountPercent) => {
-    expect(decideRoute({ discountPercent }, THRESHOLD).route).toBe("finance");
+  it.each([4, 7, 30])("sends %s days to the sourcing lead, above the limit", (extensionDays) => {
+    expect(decideRoute({ extensionDays }, MAX_AUTO_DAYS).route).toBe("lead");
   });
 
-  it("treats the threshold itself as allowed", () => {
-    expect(decideRoute({ discountPercent: 15.0 }, THRESHOLD).route).toBe("auto");
-    expect(decideRoute({ discountPercent: 15.01 }, THRESHOLD).route).toBe("finance");
+  it("treats the limit itself as allowed", () => {
+    expect(decideRoute({ extensionDays: 3 }, MAX_AUTO_DAYS).route).toBe("auto");
+    expect(decideRoute({ extensionDays: 4 }, MAX_AUTO_DAYS).route).toBe("lead");
   });
 
-  it("follows a threshold that is not the default", () => {
-    expect(decideRoute({ discountPercent: 16 }, 20).route).toBe("auto");
-    expect(decideRoute({ discountPercent: 21 }, 20).route).toBe("finance");
+  it("follows a limit that is not the default", () => {
+    expect(decideRoute({ extensionDays: 5 }, 5).route).toBe("auto");
+    expect(decideRoute({ extensionDays: 6 }, 5).route).toBe("lead");
   });
 
   it("explains itself in the reason", () => {
-    const decision = decideRoute({ discountPercent: 20 }, THRESHOLD);
-    expect(decision.reason).toContain("20");
-    expect(decision.reason).toContain("15");
+    const decision = decideRoute({ extensionDays: 7 }, MAX_AUTO_DAYS);
+    expect(decision.reason).toContain("7 days");
+    expect(decision.reason).toContain("3-day limit");
+  });
+
+  it("speaks of one day in the singular", () => {
+    expect(decideRoute({ extensionDays: 1 }, MAX_AUTO_DAYS).reason).toContain("1 day is");
   });
 });
 
 describe("decideFromCounter", () => {
-  // A model reading English called this a rejection, and a rep was told no.
+  // A model reading English called this a rejection, and a manager was told no.
   it("treats a more generous counter as an approval", () => {
-    expect(decideFromCounter({ decision: "reject", counterPercent: 50 }, 25)).toBe("approve");
+    expect(decideFromCounter({ decision: "reject", counterDays: 10 }, 5)).toBe("approve");
   });
 
   it("treats a counter equal to the request as an approval", () => {
-    expect(decideFromCounter({ decision: "reject", counterPercent: 25 }, 25)).toBe("approve");
+    expect(decideFromCounter({ decision: "reject", counterDays: 5 }, 5)).toBe("approve");
   });
 
-  it("keeps a smaller counter a rejection", () => {
-    expect(decideFromCounter({ decision: "reject", counterPercent: 12 }, 20)).toBe("reject");
+  it("keeps a shorter counter a rejection", () => {
+    expect(decideFromCounter({ decision: "reject", counterDays: 2 }, 7)).toBe("reject");
   });
 
   it("leaves a reply with no counter to the reading", () => {
-    expect(decideFromCounter({ decision: "approve", counterPercent: null }, 20)).toBe("approve");
-    expect(decideFromCounter({ decision: "reject", counterPercent: null }, 20)).toBe("reject");
+    expect(decideFromCounter({ decision: "approve", counterDays: null }, 5)).toBe("approve");
+    expect(decideFromCounter({ decision: "reject", counterDays: null }, 5)).toBe("reject");
   });
 
   it("never turns an approval into a rejection", () => {
-    expect(decideFromCounter({ decision: "approve", counterPercent: 40 }, 20)).toBe("approve");
+    expect(decideFromCounter({ decision: "approve", counterDays: 10 }, 5)).toBe("approve");
   });
 });

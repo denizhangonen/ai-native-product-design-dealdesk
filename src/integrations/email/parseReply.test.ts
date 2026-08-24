@@ -3,15 +3,15 @@ import { extractReference, stripQuotedText } from "@/integrations/email/parseRep
 
 describe("extractReference", () => {
   it.each([
-    ["[DD-1042] Discount approval: Acme 20%", "DD-1042"],
-    ["Re: [DD-1042] Discount approval: Acme 20%", "DD-1042"],
-    ["RE: RE: FW: [DD-9] Discount approval", "DD-9"],
+    ["[DD-1042] Deadline extension: Meridian Supply, RFP-2041, 5 days", "DD-1042"],
+    ["Re: [DD-1042] Deadline extension: Meridian Supply, RFP-2041, 5 days", "DD-1042"],
+    ["RE: RE: FW: [DD-9] Deadline extension", "DD-9"],
     ["Antwort: [DD-1042] Rabatt", "DD-1042"],
   ])("finds the reference in %s", (subject, expected) => {
     expect(extractReference(subject)).toBe(expected);
   });
 
-  it.each(["Discount approval: Acme", "", "Re: your message", "DD-"])(
+  it.each(["Deadline extension: Meridian Supply", "", "Re: your message", "DD-"])(
     "returns null for %s",
     (subject) => {
       expect(extractReference(subject)).toBeNull();
@@ -29,8 +29,8 @@ describe("stripQuotedText", () => {
       "Approved, but only for Q3.",
       "",
       "On Wed, Aug 20, 2026 at 10:00 AM Dealdesk <dealdesk@example.com> wrote:",
-      "> Dee Rep is asking for a discount.",
-      "> Customer: Acme",
+      "> Dee Manager is asking to extend a supplier's deadline.",
+      "> Supplier: Meridian Supply",
     ].join("\n");
 
     expect(stripQuotedText(body)).toBe("Approved, but only for Q3.");
@@ -38,15 +38,15 @@ describe("stripQuotedText", () => {
 
   it("drops Outlook quoting", () => {
     const body = [
-      "No, 12% is the most we can do.",
+      "No, 2 days is the most we can give.",
       "",
       "________________________________",
       "From: Dealdesk <dealdesk@example.com>",
       "Sent: 20 August 2026 10:00",
-      "Subject: [DD-1042] Discount approval",
+      "Subject: [DD-1042] Deadline extension",
     ].join("\r\n");
 
-    expect(stripQuotedText(body)).toBe("No, 12% is the most we can do.");
+    expect(stripQuotedText(body)).toBe("No, 2 days is the most we can give.");
   });
 
   it("drops the older Outlook original-message divider", () => {
@@ -60,14 +60,14 @@ describe("stripQuotedText", () => {
       "",
       "On 20 Aug 2026, at 10:00, Dealdesk <dealdesk@example.com> wrote:",
       "",
-      "Dee Rep is asking for a discount.",
+      "Dee Manager is asking to extend a supplier's deadline.",
     ].join("\n");
 
     expect(stripQuotedText(body)).toBe("Fine by me.");
   });
 
   it("drops a signature block", () => {
-    const body = ["approved", "", "--", "Dee Finance", "Finance Director"].join("\n");
+    const body = ["approved", "", "--", "Dee Lead", "Sourcing Director"].join("\n");
     expect(stripQuotedText(body)).toBe("approved");
   });
 
@@ -103,7 +103,7 @@ describe("stripQuotedText", () => {
     expect(stripQuotedText(body)).toBe("Sent from my iPhone, approved.");
   });
 
-  it("does not mistake a percent sign or a dash inside the reply for a marker", () => {
-    expect(stripQuotedText("12% - that is our limit")).toBe("12% - that is our limit");
+  it("does not mistake a number or a dash inside the reply for a marker", () => {
+    expect(stripQuotedText("2 days - that is our limit")).toBe("2 days - that is our limit");
   });
 });

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SlackConfig } from "@/config";
-import type { DiscountRequest } from "@/domain/request";
+import type { DeadlineRequest } from "@/domain/request";
 import type { SlackMessage } from "@/integrations/slack/events";
 import { handleSlackMessage } from "@/services/handleSlackMessage";
 
@@ -15,9 +15,6 @@ const mocks = vi.hoisted(() => ({
   submitRequest: vi.fn(),
 }));
 
-vi.mock("@/config", () => ({
-  getConfig: () => ({ DEFAULT_CURRENCY: "USD" }),
-}));
 vi.mock("@/data/inboundMessages", () => ({
   recordInboundMessage: mocks.recordInboundMessage,
   markInboundMessageProcessed: mocks.markInboundMessageProcessed,
@@ -36,28 +33,27 @@ vi.mock("@/services/submitRequest", () => ({
 const SLACK: SlackConfig = {
   signingSecret: "secret",
   botToken: "xoxb-not-a-real-token",
-  channelId: "C_SALES",
+  channelId: "C_SOURCING",
 };
 
 const MESSAGE: SlackMessage = {
   eventId: "Ev123",
-  channelId: "C_SALES",
+  channelId: "C_SOURCING",
   slackUserId: "U1",
   messageTs: "1699999999.000100",
-  text: "Need 20% off for Acme, 48k deal",
+  text: "Meridian Supply asked for 5 more days on RFP-2041, their plant lost power",
 };
 
-const REQUEST: DiscountRequest = {
+const REQUEST: DeadlineRequest = {
   id: "req-1",
   reference: "DD-1001",
-  requester: { slackUserId: "U1", displayName: "Dee Rep" },
-  customer: "Acme",
-  amountCents: 4_800_000,
-  currency: "USD",
-  discountPercent: 20,
-  reason: null,
-  status: "pending_finance",
-  approverRole: "finance",
+  requester: { slackUserId: "U1", displayName: "Dee Manager" },
+  supplier: "Meridian Supply",
+  event: "RFP-2041",
+  extensionDays: 5,
+  reason: "their plant lost power",
+  status: "pending_lead",
+  approverRole: "sourcing_lead",
   reading: null,
   createdAt: new Date(0),
   updatedAt: new Date(0),
@@ -74,23 +70,22 @@ beforeEach(() => {
   mocks.markInboundMessageProcessed.mockResolvedValue(undefined);
   mocks.linkRequest.mockResolvedValue(undefined);
   mocks.postMessage.mockResolvedValue(undefined);
-  mocks.getUserName.mockResolvedValue("Dee Rep");
+  mocks.getUserName.mockResolvedValue("Dee Manager");
   mocks.submitRequest.mockResolvedValue({
     request: REQUEST,
     routing: {
-      route: "finance",
-      reason: "20% is above the 15% limit, so finance must approve",
+      route: "lead",
+      reason: "5 days is above the 3-day limit, so the sourcing lead must approve",
     },
   });
   mocks.parseRequest.mockResolvedValue({
     kind: "parsed",
     model: "fake",
     extraction: {
-      customer: "Acme",
-      amount: 48000,
-      currency: null,
-      discountPercent: 20,
-      reason: null,
+      supplier: "Meridian Supply",
+      event: "RFP-2041",
+      extensionDays: 5,
+      reason: "their plant lost power",
       rationale: "Read plainly.",
       confidence: 0.95,
     },
@@ -103,12 +98,11 @@ describe("handleSlackMessage", () => {
 
     expect(result).toBe("submitted");
     expect(mocks.submitRequest).toHaveBeenCalledWith({
-      requester: { slackUserId: "U1", displayName: "Dee Rep" },
-      customer: "Acme",
-      amountCents: 4_800_000,
-      currency: "USD",
-      discountPercent: 20,
-      reason: null,
+      requester: { slackUserId: "U1", displayName: "Dee Manager" },
+      supplier: "Meridian Supply",
+      event: "RFP-2041",
+      extensionDays: 5,
+      reason: "their plant lost power",
       // Carried through so a reader can see how sure the model was, and which model.
       reading: { confidence: 0.95, rationale: "Read plainly.", model: "fake" },
     });
@@ -119,47 +113,26 @@ describe("handleSlackMessage", () => {
     await handleSlackMessage(MESSAGE, SLACK);
 
     const text = lastReply();
-    expect(text).toContain("20% off for Acme");
-    expect(text).toContain("$48,000");
-    expect(text).toContain("Sent to finance");
+    expect(text).toContain("5 days more for Meridian Supply on RFP-2041");
+    expect(text).toContain("Sent to the sourcing lead");
     expect(text).toContain("DD-1001");
-  });
-
-  it("uses the currency the message gave, not the default", async () => {
-    mocks.parseRequest.mockResolvedValue({
-      kind: "parsed",
-      model: "fake",
-      extraction: {
-        customer: "Acme",
-        amount: 48000,
-        currency: "EUR",
-        discountPercent: 20,
-        reason: null,
-        rationale: "Read plainly.",
-        confidence: 0.95,
-      },
-    });
-
-    await handleSlackMessage(MESSAGE, SLACK);
-
-    expect(mocks.submitRequest).toHaveBeenCalledWith(expect.objectContaining({ currency: "EUR" }));
   });
 
   it("asks for the missing piece instead of guessing", async () => {
     mocks.parseRequest.mockResolvedValue({
       kind: "incomplete",
       extraction: {},
-      missing: ["discountPercent"],
+      missing: ["extensionDays"],
     });
 
     const result = await handleSlackMessage(MESSAGE, SLACK);
 
     expect(result).toBe("needs_detail");
-    expect(lastReply()).toContain("the discount percentage");
+    expect(lastReply()).toContain("how many days");
     expect(mocks.submitRequest).not.toHaveBeenCalled();
   });
 
-  it("says so plainly when the message is not a discount request", async () => {
+  it("says so plainly when the message is not an extension request", async () => {
     mocks.parseRequest.mockResolvedValue({
       kind: "unreadable",
       reason: "whatever",
@@ -168,7 +141,7 @@ describe("handleSlackMessage", () => {
     const result = await handleSlackMessage(MESSAGE, SLACK);
 
     expect(result).toBe("not_understood");
-    expect(lastReply()).toContain("could not read that as a discount request");
+    expect(lastReply()).toContain("could not read that as a deadline extension request");
     expect(mocks.submitRequest).not.toHaveBeenCalled();
   });
 

@@ -19,7 +19,7 @@ export const fakeEmailProvider: EmailProvider = {
   name: "fake",
   async send(email: OutboundEmail): Promise<void> {
     outbox.push(email);
-    // Subject only: the body carries customer detail and the address is personal.
+    // Subject only: the body carries supplier detail and the address is personal.
     console.info({ event: "email_sent", to: maskAddress(email.to), subject: email.subject });
   },
 };

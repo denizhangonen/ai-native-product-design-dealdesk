@@ -4,7 +4,7 @@ import { sign as signSlack } from "@/guards/slackSignature";
 
 const SECRET = "inbound-secret";
 const NOW = 1_760_000_000;
-const BODY = JSON.stringify({ messageId: "m1", from: "finance@example.com" });
+const BODY = JSON.stringify({ messageId: "m1", from: "lead@example.com" });
 
 function signed(overrides: Partial<Parameters<typeof verifyEmailSignature>[0]> = {}) {
   const timestamp = String(NOW);
@@ -24,7 +24,7 @@ describe("verifyEmailSignature", () => {
   });
 
   it("rejects a body changed after signing", () => {
-    expect(signed({ body: BODY.replace("finance", "attacker") })).toBe(false);
+    expect(signed({ body: BODY.replace("lead", "attacker") })).toBe(false);
   });
 
   it("rejects a signature made with a different secret", () => {

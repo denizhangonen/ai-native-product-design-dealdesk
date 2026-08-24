@@ -45,7 +45,7 @@ const MESSAGE = {
     channel: "C1",
     user: "U1",
     ts: "1.1",
-    text: "20% off for Acme, 48k",
+    text: "Meridian Supply asked for 2 more days on RFP-2041",
   },
 };
 
@@ -101,7 +101,7 @@ describe("POST /api/slack/events", () => {
     expect(mocks.handleSlackMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         eventId: "Ev1",
-        text: "20% off for Acme, 48k",
+        text: "Meridian Supply asked for 2 more days on RFP-2041",
       }),
       SLACK,
     );

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DiscountRequest } from "@/domain/request";
+import type { DeadlineRequest } from "@/domain/request";
 import { clearOutbox, readOutbox } from "@/integrations/email/providers/fake";
 import { sendApprovalRequest, sendClarification } from "@/integrations/email/send";
 
@@ -7,22 +7,21 @@ const config = {
   EMAIL_PROVIDER: "fake",
   EMAIL_FROM: "Dealdesk <dealdesk@example.com>",
   EMAIL_REPLY_TO: "replies@example.com",
-  FINANCE_APPROVERS: ["finance@example.com"],
+  APPROVER_EMAILS: ["lead@example.com"],
 };
 
 vi.mock("@/config", () => ({ getConfig: () => config }));
 
-const REQUEST: DiscountRequest = {
+const REQUEST: DeadlineRequest = {
   id: "req-1",
   reference: "DD-1042",
-  requester: { slackUserId: "U1", displayName: "Dee Rep" },
-  customer: "Acme",
-  amountCents: 4_800_000,
-  currency: "USD",
-  discountPercent: 20,
-  reason: "renewal at risk",
-  status: "pending_finance",
-  approverRole: "finance",
+  requester: { slackUserId: "U1", displayName: "Dee Manager" },
+  supplier: "Meridian Supply",
+  event: "RFP-2041",
+  extensionDays: 5,
+  reason: "their plant lost power",
+  status: "pending_lead",
+  approverRole: "sourcing_lead",
   reading: null,
   createdAt: new Date(0),
   updatedAt: new Date(0),
@@ -30,7 +29,7 @@ const REQUEST: DiscountRequest = {
 
 beforeEach(() => {
   clearOutbox();
-  config.FINANCE_APPROVERS = ["finance@example.com"];
+  config.APPROVER_EMAILS = ["lead@example.com"];
 });
 
 describe("sendApprovalRequest", () => {
@@ -38,7 +37,7 @@ describe("sendApprovalRequest", () => {
     await sendApprovalRequest(REQUEST);
 
     const [sent] = readOutbox();
-    expect(sent.subject).toBe("[DD-1042] Discount approval: Acme 20%");
+    expect(sent.subject).toBe("[DD-1042] Deadline extension: Meridian Supply, RFP-2041, 5 days");
   });
 
   it("points replies at the inbound address, not the sender", async () => {
@@ -47,17 +46,17 @@ describe("sendApprovalRequest", () => {
     const [sent] = readOutbox();
     expect(sent.from).toBe("Dealdesk <dealdesk@example.com>");
     expect(sent.replyTo).toBe("replies@example.com");
-    expect(sent.to).toBe("finance@example.com");
+    expect(sent.to).toBe("lead@example.com");
   });
 
   it("states the facts an approver needs and how to answer", async () => {
     await sendApprovalRequest(REQUEST);
 
     const [sent] = readOutbox();
-    expect(sent.text).toContain("Acme");
-    expect(sent.text).toContain("$48,000");
-    expect(sent.text).toContain("20%");
-    expect(sent.text).toContain("renewal at risk");
+    expect(sent.text).toContain("Meridian Supply");
+    expect(sent.text).toContain("RFP-2041");
+    expect(sent.text).toContain("5 days");
+    expect(sent.text).toContain("their plant lost power");
     expect(sent.text).toMatch(/reply approve or reject/i);
   });
 
@@ -67,18 +66,18 @@ describe("sendApprovalRequest", () => {
   });
 
   it("mails every configured approver", async () => {
-    config.FINANCE_APPROVERS = ["finance@example.com", "cfo@example.com"];
+    config.APPROVER_EMAILS = ["lead@example.com", "cpo@example.com"];
 
     await sendApprovalRequest(REQUEST);
 
     expect(readOutbox().map((email) => email.to)).toEqual([
-      "finance@example.com",
-      "cfo@example.com",
+      "lead@example.com",
+      "cpo@example.com",
     ]);
   });
 
   it("sends nothing when no approver is configured", async () => {
-    config.FINANCE_APPROVERS = [];
+    config.APPROVER_EMAILS = [];
 
     await sendApprovalRequest(REQUEST);
 
@@ -88,7 +87,7 @@ describe("sendApprovalRequest", () => {
 
 describe("sendClarification", () => {
   it("keeps the reference and asks for a plain answer", async () => {
-    await sendClarification(REQUEST, "finance@example.com", "msg-1");
+    await sendClarification(REQUEST, "lead@example.com", "msg-1");
 
     const [sent] = readOutbox();
     expect(sent.subject).toContain("DD-1042");
@@ -97,8 +96,8 @@ describe("sendClarification", () => {
   });
 
   it("keys each clarification to the reply it answers", async () => {
-    await sendClarification(REQUEST, "finance@example.com", "msg-1");
-    await sendClarification(REQUEST, "finance@example.com", "msg-2");
+    await sendClarification(REQUEST, "lead@example.com", "msg-1");
+    await sendClarification(REQUEST, "lead@example.com", "msg-2");
 
     const keys = readOutbox().map((sent) => sent.idempotencyKey);
     expect(keys).toEqual(["clarify:msg-1", "clarify:msg-2"]);

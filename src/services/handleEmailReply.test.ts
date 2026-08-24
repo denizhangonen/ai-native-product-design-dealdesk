@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DiscountRequest } from "@/domain/request";
+import type { DeadlineRequest } from "@/domain/request";
 import { InvalidTransition } from "@/domain/errors";
 import { handleEmailReply } from "@/services/handleEmailReply";
 
@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/config", () => ({
-  getConfig: () => ({ FINANCE_APPROVERS: ["finance@example.com"] }),
+  getConfig: () => ({ APPROVER_EMAILS: ["lead@example.com"] }),
 }));
 vi.mock("@/data/inboundEmails", () => ({
   recordInboundEmail: mocks.recordInboundEmail,
@@ -34,17 +34,16 @@ vi.mock("@/services/notifyRequester", () => ({
   notifyRequester: mocks.notifyRequester,
 }));
 
-const REQUEST: DiscountRequest = {
+const REQUEST: DeadlineRequest = {
   id: "req-1",
   reference: "DD-1042",
-  requester: { slackUserId: "U1", displayName: "Dee Rep" },
-  customer: "Acme",
-  amountCents: 4_800_000,
-  currency: "USD",
-  discountPercent: 20,
+  requester: { slackUserId: "U1", displayName: "Dee Manager" },
+  supplier: "Meridian Supply",
+  event: "RFP-2041",
+  extensionDays: 5,
   reason: null,
-  status: "pending_finance",
-  approverRole: "finance",
+  status: "pending_lead",
+  approverRole: "sourcing_lead",
   reading: null,
   createdAt: new Date(0),
   updatedAt: new Date(0),
@@ -52,9 +51,9 @@ const REQUEST: DiscountRequest = {
 
 const EMAIL = {
   messageId: "msg-1",
-  from: "Dee Finance <finance@example.com>",
-  subject: "Re: [DD-1042] Discount approval: Acme 20%",
-  body: "Approved, but only for Q3.\n\nOn Wed, Aug 20, 2026 at 10:00 AM Dealdesk wrote:\n> ...",
+  from: "Dee Lead <lead@example.com>",
+  subject: "Re: [DD-1042] Deadline extension: Meridian Supply, RFP-2041, 5 days",
+  body: "Approved, but this is the last one.\n\nOn Wed, Aug 20, 2026 at 10:00 AM Dealdesk wrote:\n> ...",
 };
 
 beforeEach(() => {
@@ -72,8 +71,8 @@ beforeEach(() => {
     kind: "decided",
     reading: {
       decision: "approve",
-      note: "only for Q3",
-      counterPercent: null,
+      note: "this is the last one",
+      counterDays: null,
       confidence: 0.95,
     },
   });
@@ -87,17 +86,17 @@ describe("handleEmailReply", () => {
     expect(mocks.applyDecision).toHaveBeenCalledWith({
       requestId: "req-1",
       decision: "approve",
-      actor: "finance@example.com",
-      note: "only for Q3",
+      actor: "lead@example.com",
+      note: "this is the last one",
     });
   });
 
-  it("tells the rep in their thread once the decision is applied", async () => {
+  it("tells the manager in their thread once the decision is applied", async () => {
     await handleEmailReply(EMAIL);
 
     expect(mocks.notifyRequester).toHaveBeenCalledWith(
       expect.objectContaining({ status: "approved" }),
-      "only for Q3",
+      "this is the last one",
     );
   });
 
@@ -111,7 +110,7 @@ describe("handleEmailReply", () => {
 
   it("reads only what was typed, not the quoted original", async () => {
     await handleEmailReply(EMAIL);
-    expect(mocks.parseDecision).toHaveBeenCalledWith("Approved, but only for Q3.");
+    expect(mocks.parseDecision).toHaveBeenCalledWith("Approved, but this is the last one.");
   });
 
   it("records a counter offer alongside the note", async () => {
@@ -119,8 +118,8 @@ describe("handleEmailReply", () => {
       kind: "decided",
       reading: {
         decision: "reject",
-        note: "12% is the most we can do",
-        counterPercent: 12,
+        note: "2 days is the most we can give",
+        counterDays: 2,
         confidence: 0.95,
       },
     });
@@ -130,8 +129,21 @@ describe("handleEmailReply", () => {
     expect(mocks.applyDecision).toHaveBeenCalledWith(
       expect.objectContaining({
         decision: "reject",
-        note: "12% is the most we can do - counter offer 12%",
+        note: "2 days is the most we can give - counter offer 2 days",
       }),
+    );
+  });
+
+  it("treats a counter offer longer than the request as an approval", async () => {
+    mocks.parseDecision.mockResolvedValue({
+      kind: "decided",
+      reading: { decision: "reject", note: null, counterDays: 10, confidence: 0.95 },
+    });
+
+    await handleEmailReply(EMAIL);
+
+    expect(mocks.applyDecision).toHaveBeenCalledWith(
+      expect.objectContaining({ decision: "approve", note: "counter offer 10 days" }),
     );
   });
 
@@ -146,7 +158,7 @@ describe("handleEmailReply", () => {
   it("ignores a reply from someone who is not an approver", async () => {
     const result = await handleEmailReply({
       ...EMAIL,
-      from: "rep@example.com",
+      from: "manager@example.com",
     });
 
     expect(result).toBe("not_an_approver");
@@ -171,7 +183,7 @@ describe("handleEmailReply", () => {
 
     expect(result).toBe("unclear");
     expect(mocks.applyDecision).not.toHaveBeenCalled();
-    expect(mocks.sendClarification).toHaveBeenCalledWith(REQUEST, "finance@example.com", "msg-1");
+    expect(mocks.sendClarification).toHaveBeenCalledWith(REQUEST, "lead@example.com", "msg-1");
   });
 
   it("does nothing when the same message arrives twice", async () => {
@@ -215,7 +227,7 @@ describe("handleEmailReply", () => {
   });
 
   it("lets the first decision stand when a contradicting reply arrives later", async () => {
-    mocks.applyDecision.mockRejectedValue(new InvalidTransition("approved", "finance_rejected"));
+    mocks.applyDecision.mockRejectedValue(new InvalidTransition("approved", "lead_rejected"));
 
     const result = await handleEmailReply(EMAIL);
 

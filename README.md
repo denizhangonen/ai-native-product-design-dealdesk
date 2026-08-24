@@ -1,10 +1,11 @@
 # Dealdesk
 
-A discount approval flow that lives where the work already happens.
+A supplier deadline extension flow that lives where the work already happens.
 
-A sales rep asks for a discount in Slack. The request is understood, the rule is applied
-in code, and finance approves by replying to an ordinary email. The rep hears back in the
-same Slack thread. Nobody opens a new app.
+A category manager asks in Slack to give a supplier more time on a sourcing event. The
+request is understood, the rule is applied in code, and the sourcing lead approves by
+replying to an ordinary email. The manager hears back in the same Slack thread. Nobody
+opens a new app.
 
 This is a **working slice, not a product**. It exists to show what AI-native product design
 looks like when the software comes to the user instead of waiting to be fed.
@@ -14,8 +15,9 @@ Live at **https://ai-native-dealdesk.vercel.app**
 ## Status
 
 The full loop works end to end against real services: a Slack request comes in, a model
-extracts the fields, code decides the route, finance approves by replying to an ordinary
-email, the rep hears back in the same Slack thread, and the status page updates. Mail is
+extracts the fields, code decides the route, the sourcing lead approves by replying to an
+ordinary email, the manager hears back in the same Slack thread, and the status page
+updates. Mail is
 sent and received through Resend on a subdomain of its own. Running locally, a stand-in
 provider keeps the whole flow working with no account and no network.
 

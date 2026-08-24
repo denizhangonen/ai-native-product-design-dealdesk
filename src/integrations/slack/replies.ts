@@ -1,19 +1,22 @@
 import type { RequiredField } from "@/ai/schemas";
 import { describeMissing } from "@/ai/schemas";
-import { type DiscountRequest, formatAmount } from "@/domain/request";
+import { type DeadlineRequest, formatExtension } from "@/domain/request";
 import type { RoutingDecision } from "@/domain/rules";
 
-const EXAMPLE = "Something like: 20% off for Acme, 48k, renewal at risk.";
+const EXAMPLE = "Something like: Meridian Supply asked for 2 more days on RFP-2041, their plant lost power.";
+
+function summary(request: DeadlineRequest): string {
+  return `${formatExtension(request.extensionDays)} more for ${request.supplier} on ${request.event}`;
+}
 
 /** Says back what was understood, so a misread is obvious immediately. */
-export function understood(request: DiscountRequest, routing: RoutingDecision): string {
-  const summary = `Understood: ${request.discountPercent}% off for ${request.customer}, ${formatAmount(request)}.`;
+export function understood(request: DeadlineRequest, routing: RoutingDecision): string {
   const outcome =
-    routing.route === "finance"
-      ? `${routing.reason}. Sent to finance.`
+    routing.route === "lead"
+      ? `${routing.reason}. Sent to the sourcing lead.`
       : `${routing.reason}, so it is approved.`;
 
-  return `${summary}\n${outcome}\nReference ${request.reference}.`;
+  return `Understood: ${summary(request)}.\n${outcome}\nReference ${request.reference}.`;
 }
 
 export function needMoreDetail(missing: RequiredField[]): string {
@@ -25,15 +28,15 @@ export function somethingWentWrong(): string {
 }
 
 export function notUnderstood(): string {
-  return `I could not read that as a discount request. ${EXAMPLE}`;
+  return `I could not read that as a deadline extension request. ${EXAMPLE}`;
 }
 
-/** The outcome, in the thread where the rep asked. */
-export function decided(request: DiscountRequest, note: string | null): string {
+/** The outcome, in the thread where the manager asked. */
+export function decided(request: DeadlineRequest, note: string | null): string {
   const verdict =
     request.status === "approved"
-      ? `Approved by finance: ${request.discountPercent}% off for ${request.customer}.`
-      : `Rejected by finance: ${request.discountPercent}% off for ${request.customer}.`;
+      ? `Approved by the sourcing lead: ${summary(request)}.`
+      : `Rejected by the sourcing lead: ${summary(request)}.`;
 
   return note ? `${verdict}\nNote: ${note}` : verdict;
 }

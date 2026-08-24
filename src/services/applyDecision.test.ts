@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InvalidTransition, RequestNotFound } from "@/domain/errors";
-import type { DiscountRequest } from "@/domain/request";
+import type { DeadlineRequest } from "@/domain/request";
 import type { RequestStatus } from "@/domain/status";
 import { applyDecision } from "@/services/applyDecision";
 
@@ -18,18 +18,17 @@ vi.mock("@/data/requests", () => ({
 }));
 vi.mock("@/data/events", () => ({ appendEvent: mocks.appendEvent }));
 
-function stubRequest(status: RequestStatus): DiscountRequest {
+function stubRequest(status: RequestStatus): DeadlineRequest {
   return {
     id: "req-1",
     reference: "DD-1001",
     requester: { slackUserId: "U123", displayName: "Rep" },
-    customer: "Acme",
-    amountCents: 4_800_000,
-    currency: "USD",
-    discountPercent: 20,
+    supplier: "Meridian Supply",
+    event: "RFP-2041",
+    extensionDays: 5,
     reason: null,
     status,
-    approverRole: "finance",
+    approverRole: "sourcing_lead",
     reading: null,
     createdAt: new Date(0),
     updatedAt: new Date(0),
@@ -49,12 +48,12 @@ beforeEach(() => {
 
 describe("applyDecision", () => {
   it("reads the row under a lock inside the transaction, not before it", async () => {
-    mocks.getRequestForUpdate.mockResolvedValue(stubRequest("pending_finance"));
+    mocks.getRequestForUpdate.mockResolvedValue(stubRequest("pending_lead"));
 
     await applyDecision({
       requestId: "req-1",
       decision: "approve",
-      actor: "finance@example.com",
+      actor: "lead@example.com",
     });
 
     // The executor passed to the read is the transaction, which is what holds the lock.
@@ -62,41 +61,41 @@ describe("applyDecision", () => {
     expect(mocks.begin).toHaveBeenCalledTimes(1);
   });
 
-  it("approves a request that is waiting on finance", async () => {
-    mocks.getRequestForUpdate.mockResolvedValue(stubRequest("pending_finance"));
+  it("approves a request that is waiting on the sourcing lead", async () => {
+    mocks.getRequestForUpdate.mockResolvedValue(stubRequest("pending_lead"));
 
     const result = await applyDecision({
       requestId: "req-1",
       decision: "approve",
-      actor: "finance@example.com",
+      actor: "lead@example.com",
     });
 
     expect(result.request.status).toBe("approved");
     expect(result.changed).toBe(true);
     expect(mocks.appendEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: "finance_approved",
-        actor: "finance@example.com",
+        type: "lead_approved",
+        actor: "lead@example.com",
       }),
       {},
     );
   });
 
-  it("rejects a request that is waiting on finance", async () => {
-    mocks.getRequestForUpdate.mockResolvedValue(stubRequest("pending_finance"));
+  it("rejects a request that is waiting on the sourcing lead", async () => {
+    mocks.getRequestForUpdate.mockResolvedValue(stubRequest("pending_lead"));
 
     const result = await applyDecision({
       requestId: "req-1",
       decision: "reject",
-      actor: "finance@example.com",
-      note: "12% is the most we can do",
+      actor: "lead@example.com",
+      note: "2 days is the most we can give",
     });
 
     expect(result.request.status).toBe("rejected");
     expect(result.changed).toBe(true);
     expect(mocks.appendEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        payload: { note: "12% is the most we can do" },
+        payload: { note: "2 days is the most we can give" },
       }),
       {},
     );
@@ -108,7 +107,7 @@ describe("applyDecision", () => {
     const result = await applyDecision({
       requestId: "req-1",
       decision: "approve",
-      actor: "finance@example.com",
+      actor: "lead@example.com",
     });
 
     expect(result.request.status).toBe("approved");
@@ -124,20 +123,20 @@ describe("applyDecision", () => {
       applyDecision({
         requestId: "req-1",
         decision: "reject",
-        actor: "finance@example.com",
+        actor: "lead@example.com",
       }),
     ).rejects.toThrow(InvalidTransition);
     expect(mocks.updateStatus).not.toHaveBeenCalled();
   });
 
-  it("refuses a decision on a request that was never routed to finance", async () => {
+  it("refuses a decision on a request that was never routed to the sourcing lead", async () => {
     mocks.getRequestForUpdate.mockResolvedValue(stubRequest("pending_review"));
 
     await expect(
       applyDecision({
         requestId: "req-1",
         decision: "approve",
-        actor: "finance@example.com",
+        actor: "lead@example.com",
       }),
     ).rejects.toThrow(InvalidTransition);
   });
@@ -149,7 +148,7 @@ describe("applyDecision", () => {
       applyDecision({
         requestId: "missing",
         decision: "approve",
-        actor: "finance@example.com",
+        actor: "lead@example.com",
       }),
     ).rejects.toThrow(RequestNotFound);
   });

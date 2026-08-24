@@ -15,8 +15,8 @@ vi.mock("@/services/handleEmailReply", () => ({
 
 const EMAIL = {
   messageId: "m1",
-  from: "finance@example.com",
-  subject: "Re: [DD-1042] Discount approval",
+  from: "lead@example.com",
+  subject: "Re: [DD-1042] Deadline extension",
   body: "approved",
 };
 

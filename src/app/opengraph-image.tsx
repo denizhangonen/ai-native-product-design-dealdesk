@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Dealdesk, discount approvals that happen in Slack and email";
+export const alt = "Dealdesk, deadline extensions approved in Slack and email";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -31,7 +31,7 @@ export default function OpengraphImage() {
         <div style={{ fontSize: 88, fontWeight: 700, marginTop: 32 }}>Dealdesk</div>
 
         <div style={{ fontSize: 36, color: "#94A3B8", marginTop: 16, lineHeight: 1.35 }}>
-          Discount approvals that happen in Slack and email.
+          Deadline extensions approved in Slack and email.
         </div>
 
         <div style={{ fontSize: 30, color: "#34D399", marginTop: 40 }}>

@@ -5,10 +5,10 @@ import type { AuditEvent } from "@/data/events";
 // this page is public and actors can be email addresses.
 const DESCRIBE: Record<string, string> = {
   created: "Request received from Slack",
-  submitted: "Above the limit, sent to finance",
+  submitted: "Above the limit, sent to the sourcing lead",
   auto_approved: "Within the limit, approved automatically",
-  finance_approved: "Approved by finance",
-  finance_rejected: "Rejected by finance",
+  lead_approved: "Approved by the sourcing lead",
+  lead_rejected: "Rejected by the sourcing lead",
 };
 
 export function Timeline({ events }: { events: AuditEvent[] }) {

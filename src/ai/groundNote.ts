@@ -8,7 +8,7 @@ function flatten(text: string): string {
 /**
  * Keeps a note only when the reply actually contains it. The model may quote an
  * approver, never speak for one: an invented condition would be passed to the rep
- * as though finance had written it.
+ * as though the sourcing lead had written it.
  */
 export function quotedNote(note: string | null, reply: string): string | null {
   if (!note) return null;

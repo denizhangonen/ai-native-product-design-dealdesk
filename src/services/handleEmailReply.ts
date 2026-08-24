@@ -3,6 +3,7 @@ import { getConfig } from "@/config";
 import { markInboundEmailProcessed, recordInboundEmail } from "@/data/inboundEmails";
 import { getRequestByReference } from "@/data/requests";
 import { InvalidTransition } from "@/domain/errors";
+import { formatExtension } from "@/domain/request";
 import { decideFromCounter } from "@/domain/rules";
 import { isApprover, normaliseAddress } from "@/guards/approverAllowlist";
 import { extractReference, stripQuotedText } from "@/integrations/email/parseReply";
@@ -32,7 +33,7 @@ export async function handleEmailReply(email: InboundEmail): Promise<EmailReplyR
 
   // Checked before anything is stored: the approval address is public, so a
   // stranger must not be able to write a row or reach the model by emailing it.
-  if (!isApprover(from, getConfig().FINANCE_APPROVERS)) {
+  if (!isApprover(from, getConfig().APPROVER_EMAILS)) {
     console.warn({ event: "email_from_non_approver", reference });
     return "not_an_approver";
   }
@@ -75,13 +76,13 @@ export async function handleEmailReply(email: InboundEmail): Promise<EmailReplyR
     return finish("unclear");
   }
 
-  const { note, counterPercent } = outcome.reading;
+  const { note, counterDays } = outcome.reading;
   // The model reports what was written; this rule decides what a counter offer means.
-  const decision = decideFromCounter(outcome.reading, request.discountPercent);
+  const decision = decideFromCounter(outcome.reading, request.extensionDays);
   const fullNote =
-    counterPercent === null
+    counterDays === null
       ? note
-      : [note, `counter offer ${counterPercent}%`].filter(Boolean).join(" - ");
+      : [note, `counter offer ${formatExtension(counterDays)}`].filter(Boolean).join(" - ");
 
   try {
     const applied = await applyDecision({

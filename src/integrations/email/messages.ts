@@ -1,4 +1,4 @@
-import { type DiscountRequest, formatAmount } from "@/domain/request";
+import { type DeadlineRequest, formatExtension } from "@/domain/request";
 
 export type EmailContent = {
   subject: string;
@@ -6,25 +6,25 @@ export type EmailContent = {
 };
 
 /** The reference in the subject is how a reply finds its way back to the request. */
-export function approvalRequestEmail(request: DiscountRequest): EmailContent {
+export function approvalRequestEmail(request: DeadlineRequest): EmailContent {
   const lines = [
-    `${request.requester.displayName} is asking for a discount.`,
+    `${request.requester.displayName} is asking to extend a supplier's deadline.`,
     "",
-    `Customer:   ${request.customer}`,
-    `Deal value: ${formatAmount(request)}`,
-    `Discount:   ${request.discountPercent}%`,
-    `Reason:     ${request.reason ?? "not given"}`,
+    `Supplier:  ${request.supplier}`,
+    `Event:     ${request.event}`,
+    `Extension: ${formatExtension(request.extensionDays)}`,
+    `Reason:    ${request.reason ?? "not given"}`,
     "",
     "Reply approve or reject. Add a note if you like, and it will be passed on.",
   ];
 
   return {
-    subject: `[${request.reference}] Discount approval: ${request.customer} ${request.discountPercent}%`,
+    subject: `[${request.reference}] Deadline extension: ${request.supplier}, ${request.event}, ${formatExtension(request.extensionDays)}`,
     text: lines.join("\n"),
   };
 }
 
-export function clarificationEmail(request: DiscountRequest): EmailContent {
+export function clarificationEmail(request: DeadlineRequest): EmailContent {
   return {
     subject: `[${request.reference}] Sorry, was that an approval?`,
     text: [

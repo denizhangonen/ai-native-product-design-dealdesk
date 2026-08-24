@@ -1,4 +1,4 @@
-import type { ApproverRole, DiscountRequest } from "@/domain/request";
+import type { ApproverRole, DeadlineRequest } from "@/domain/request";
 import type { RequestStatus } from "@/domain/status";
 
 export type RequestRow = {
@@ -6,10 +6,9 @@ export type RequestRow = {
   reference: string;
   slack_user_id: string;
   requester_name: string;
-  customer: string;
-  amount_cents: string;
-  currency: string;
-  discount_percent: string;
+  supplier: string;
+  sourcing_event: string;
+  extension_days: number;
   reason: string | null;
   status: string;
   approver_role: string | null;
@@ -20,8 +19,8 @@ export type RequestRow = {
   updated_at: Date;
 };
 
-// Postgres returns bigint and numeric as strings to protect precision.
-export function toDiscountRequest(row: RequestRow): DiscountRequest {
+// Postgres returns numeric as a string to protect precision.
+export function toDeadlineRequest(row: RequestRow): DeadlineRequest {
   return {
     id: row.id,
     reference: row.reference,
@@ -29,10 +28,9 @@ export function toDiscountRequest(row: RequestRow): DiscountRequest {
       slackUserId: row.slack_user_id,
       displayName: row.requester_name,
     },
-    customer: row.customer,
-    amountCents: Number(row.amount_cents),
-    currency: row.currency,
-    discountPercent: Number(row.discount_percent),
+    supplier: row.supplier,
+    event: row.sourcing_event,
+    extensionDays: row.extension_days,
     reason: row.reason,
     status: row.status as RequestStatus,
     approverRole: row.approver_role as ApproverRole | null,

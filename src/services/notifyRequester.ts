@@ -1,6 +1,6 @@
 import { getSlackConfig } from "@/config";
 import { findSlackOrigin } from "@/data/inboundMessages";
-import type { DiscountRequest } from "@/domain/request";
+import type { DeadlineRequest } from "@/domain/request";
 import { postMessage } from "@/integrations/slack/client";
 import { decided } from "@/integrations/slack/replies";
 
@@ -11,7 +11,7 @@ export type NotifyResult = "notified" | "no_origin" | "slack_not_configured" | "
  * already recorded, and a failed notification must not look like a failed decision.
  */
 export async function notifyRequester(
-  request: DiscountRequest,
+  request: DeadlineRequest,
   note: string | null,
 ): Promise<NotifyResult> {
   const slack = getSlackConfig();

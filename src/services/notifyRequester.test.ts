@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DiscountRequest } from "@/domain/request";
+import type { DeadlineRequest } from "@/domain/request";
 import { notifyRequester } from "@/services/notifyRequester";
 
 const mocks = vi.hoisted(() => ({
@@ -19,20 +19,19 @@ vi.mock("@/integrations/slack/client", () => ({
 const SLACK = {
   signingSecret: "s",
   botToken: "xoxb-not-a-real-token",
-  channelId: "C_SALES",
+  channelId: "C_SOURCING",
 };
 
-const REQUEST: DiscountRequest = {
+const REQUEST: DeadlineRequest = {
   id: "req-1",
   reference: "DD-1042",
-  requester: { slackUserId: "U1", displayName: "Dee Rep" },
-  customer: "Acme",
-  amountCents: 4_800_000,
-  currency: "USD",
-  discountPercent: 20,
+  requester: { slackUserId: "U1", displayName: "Dee Manager" },
+  supplier: "Meridian Supply",
+  event: "RFP-2041",
+  extensionDays: 5,
   reason: null,
   status: "approved",
-  approverRole: "finance",
+  approverRole: "sourcing_lead",
   reading: null,
   createdAt: new Date(0),
   updatedAt: new Date(0),
@@ -42,36 +41,38 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.getSlackConfig.mockReturnValue(SLACK);
   mocks.findSlackOrigin.mockResolvedValue({
-    channelId: "C_SALES",
+    channelId: "C_SOURCING",
     messageTs: "1699.0001",
   });
   mocks.postMessage.mockResolvedValue(undefined);
 });
 
 describe("notifyRequester", () => {
-  it("replies in the thread where the rep asked", async () => {
-    const result = await notifyRequester(REQUEST, "only for Q3");
+  it("replies in the thread where the manager asked", async () => {
+    const result = await notifyRequester(REQUEST, "this is the last one");
 
     expect(result).toBe("notified");
     expect(mocks.postMessage).toHaveBeenCalledWith({
       botToken: SLACK.botToken,
-      channel: "C_SALES",
+      channel: "C_SOURCING",
       threadTs: "1699.0001",
-      text: "Approved by finance: 20% off for Acme.\nNote: only for Q3",
+      text: "Approved by the sourcing lead: 5 days more for Meridian Supply on RFP-2041.\nNote: this is the last one",
     });
   });
 
   it("words a rejection plainly", async () => {
-    await notifyRequester({ ...REQUEST, status: "rejected" }, "12% is the most we can do");
+    await notifyRequester({ ...REQUEST, status: "rejected" }, "2 days is the most we can give");
 
     expect(mocks.postMessage.mock.calls[0][0].text).toBe(
-      "Rejected by finance: 20% off for Acme.\nNote: 12% is the most we can do",
+      "Rejected by the sourcing lead: 5 days more for Meridian Supply on RFP-2041.\nNote: 2 days is the most we can give",
     );
   });
 
   it("leaves the note line out when there is no note", async () => {
     await notifyRequester(REQUEST, null);
-    expect(mocks.postMessage.mock.calls[0][0].text).toBe("Approved by finance: 20% off for Acme.");
+    expect(mocks.postMessage.mock.calls[0][0].text).toBe(
+      "Approved by the sourcing lead: 5 days more for Meridian Supply on RFP-2041.",
+    );
   });
 
   it("does nothing when Slack is not configured", async () => {

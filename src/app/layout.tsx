@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 const SITE_URL = "https://ai-native-dealdesk.vercel.app";
 
 const DESCRIPTION =
-  "Discount approvals that happen in Slack and email. A model reads the request, " +
+  "Supplier deadline extensions approved in Slack and email. A model reads the request, " +
   "a rule in code decides it, and nobody opens another dashboard.";
 
 export const metadata: Metadata = {

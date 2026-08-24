@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InvalidRequestInput } from "@/domain/errors";
-import type { DiscountRequest } from "@/domain/request";
+import type { DeadlineRequest } from "@/domain/request";
 import type { RequestStatus } from "@/domain/status";
 import { type SubmitRequestInput, submitRequest } from "@/services/submitRequest";
 
@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/config", () => ({
   getConfig: () => ({
     DATABASE_URL: "x",
-    APPROVAL_THRESHOLD_PERCENT: 15,
+    AUTO_APPROVE_MAX_DAYS: 3,
     LLM_PROVIDER: "fake",
   }),
 }));
@@ -26,25 +26,23 @@ vi.mock("@/data/requests", () => ({
 vi.mock("@/data/events", () => ({ appendEvent: mocks.appendEvent }));
 
 const VALID: SubmitRequestInput = {
-  requester: { slackUserId: "U123", displayName: "Rep" },
-  customer: "Acme",
-  amountCents: 4_800_000,
-  currency: "usd",
-  discountPercent: 20,
-  reason: "renewal at risk",
+  requester: { slackUserId: "U123", displayName: "Manager" },
+  supplier: "Meridian Supply",
+  event: "RFP-2041",
+  extensionDays: 5,
+  reason: "their plant lost power",
   reading: { confidence: 0.95, rationale: "Stated plainly.", model: "fake" },
 };
 
-function stubRequest(overrides: Partial<DiscountRequest> = {}): DiscountRequest {
+function stubRequest(overrides: Partial<DeadlineRequest> = {}): DeadlineRequest {
   return {
     id: "req-1",
     reference: "DD-1001",
     requester: VALID.requester,
-    customer: "Acme",
-    amountCents: 4_800_000,
-    currency: "USD",
-    discountPercent: 20,
-    reason: "renewal at risk",
+    supplier: "Meridian Supply",
+    event: "RFP-2041",
+    extensionDays: 5,
+    reason: "their plant lost power",
     status: "pending_review",
     approverRole: null,
     reading: null,
@@ -90,21 +88,18 @@ describe("submitRequest", () => {
     );
   });
 
-  it("sends a discount above the limit to finance", async () => {
+  it("sends an extension above the limit to the sourcing lead", async () => {
     const { request, routing } = await submitRequest(VALID);
 
-    expect(routing.route).toBe("finance");
-    expect(request.status).toBe("pending_finance");
-    expect(mocks.updateStatus).toHaveBeenCalledWith("req-1", "pending_finance", "finance", {});
+    expect(routing.route).toBe("lead");
+    expect(request.status).toBe("pending_lead");
+    expect(mocks.updateStatus).toHaveBeenCalledWith("req-1", "pending_lead", "sourcing_lead", {});
   });
 
-  it("approves a discount within the limit without an approver", async () => {
-    mocks.insertRequest.mockResolvedValue(stubRequest({ discountPercent: 10 }));
+  it("approves an extension within the limit without an approver", async () => {
+    mocks.insertRequest.mockResolvedValue(stubRequest({ extensionDays: 2 }));
 
-    const { request, routing } = await submitRequest({
-      ...VALID,
-      discountPercent: 10,
-    });
+    const { request, routing } = await submitRequest({ ...VALID, extensionDays: 2 });
 
     expect(routing.route).toBe("auto");
     expect(request.status).toBe("approved");
@@ -123,41 +118,25 @@ describe("submitRequest", () => {
     expect(mocks.begin).toHaveBeenCalledTimes(1);
   });
 
-  it("normalises the currency to upper case", async () => {
-    await submitRequest(VALID);
-    expect(mocks.insertRequest).toHaveBeenCalledWith(
-      expect.objectContaining({ currency: "USD" }),
-      {},
-    );
-  });
-
   it.each([
-    ["a discount above 100", { discountPercent: 101 }],
-    ["a negative amount", { amountCents: -1 }],
-    ["a fractional amount in cents", { amountCents: 10.5 }],
-    ["an empty customer", { customer: "" }],
-    ["a bad currency", { currency: "dollars" }],
-    ["a missing requester id", { requester: { slackUserId: "", displayName: "Rep" } }],
+    ["zero days", { extensionDays: 0 }],
+    ["more than a year", { extensionDays: 366 }],
+    ["a fraction of a day", { extensionDays: 1.5 }],
+    ["an empty supplier", { supplier: "" }],
+    ["an empty event", { event: "" }],
+    ["a missing requester id", { requester: { slackUserId: "", displayName: "Manager" } }],
   ])("rejects %s", async (_label, overrides) => {
     await expect(submitRequest({ ...VALID, ...overrides })).rejects.toThrow(InvalidRequestInput);
     expect(mocks.begin).not.toHaveBeenCalled();
   });
 
   it("names the offending field without echoing its value", async () => {
-    const secretCustomer = "Very Confidential Customer Ltd";
+    const secretSupplier = "Very Confidential Supplier Ltd";
     await expect(
-      submitRequest({
-        ...VALID,
-        customer: secretCustomer,
-        discountPercent: 101,
-      }),
-    ).rejects.toThrow(/discountPercent/);
+      submitRequest({ ...VALID, supplier: secretSupplier, extensionDays: 0 }),
+    ).rejects.toThrow(/extensionDays/);
     await expect(
-      submitRequest({
-        ...VALID,
-        customer: secretCustomer,
-        discountPercent: 101,
-      }),
-    ).rejects.not.toThrow(new RegExp(secretCustomer));
+      submitRequest({ ...VALID, supplier: secretSupplier, extensionDays: 0 }),
+    ).rejects.not.toThrow(new RegExp(secretSupplier));
   });
 });

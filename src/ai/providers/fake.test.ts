@@ -14,81 +14,68 @@ async function read(message: string) {
   return extractionSchema.parse(JSON.parse(raw));
 }
 
+const FIXED =
+  '{"supplier":"Fixed","event":"RFP-1","extensionDays":2,"reason":null,"confidence":1}';
+
 describe("fakeProvider", () => {
   it("prefers a fixture over its own guessing", async () => {
-    setFixture(
-      "anything",
-      '{"customer":"Fixed","amount":1,"currency":null,"discountPercent":5,"reason":null,"confidence":1}',
-    );
-    expect((await read("anything")).customer).toBe("Fixed");
+    setFixture("anything", FIXED);
+    expect((await read("anything")).supplier).toBe("Fixed");
   });
 
   it("matches a fixture regardless of spacing and case", async () => {
-    setFixture(
-      "Need 20% off",
-      '{"customer":"Cased","amount":1,"currency":null,"discountPercent":5,"reason":null,"confidence":1}',
-    );
-    expect((await read("  need   20% OFF  ")).customer).toBe("Cased");
+    setFixture("Need 2 more days", FIXED);
+    expect((await read("  need   2 MORE days  ")).supplier).toBe("Fixed");
   });
 
   it.each([
-    ["Need 20% off for Acme, 48k deal", { customer: "Acme", amount: 48000, discountPercent: 20 }],
     [
-      "can we do 10 percent for Globex on the 12k renewal",
-      { customer: "Globex", amount: 12000, discountPercent: 10 },
+      "Meridian Supply asked for 2 more days on RFP-2041, their plant lost power",
+      { supplier: "Meridian Supply", event: "RFP-2041", extensionDays: 2 },
     ],
     [
-      "15% for Initech, $250,000 contract",
-      { customer: "Initech", amount: 250000, discountPercent: 15 },
+      "Can we give Nordvik Components a week on RFQ-318? their lead engineer is off sick",
+      { supplier: "Nordvik Components", event: "RFQ-318", extensionDays: 7 },
     ],
     [
-      "1.2m deal for Umbrella, 25% off",
-      { customer: "Umbrella", amount: 1200000, discountPercent: 25 },
+      "Atlas Freight needs 5 extra days on rfp-2044, customs delay",
+      { supplier: "Atlas Freight", event: "RFP-2044", extensionDays: 5 },
+    ],
+    [
+      "48 hours more for Cobalt Metals on RFQ-77 please",
+      { supplier: "Cobalt Metals", event: "RFQ-77", extensionDays: 2 },
     ],
   ])("reads %s", async (message, expected) => {
     const extraction = await read(message);
-    expect(extraction.customer).toBe(expected.customer);
-    expect(extraction.amount).toBe(expected.amount);
-    expect(extraction.discountPercent).toBe(expected.discountPercent);
+    expect(extraction.supplier).toBe(expected.supplier);
+    expect(extraction.event).toBe(expected.event);
+    expect(extraction.extensionDays).toBe(expected.extensionDays);
     expect(extraction.confidence).toBeGreaterThanOrEqual(0.6);
   });
 
-  it("does not mistake the discount for the deal value", async () => {
-    expect((await read("20% off for Acme, 48k deal")).amount).toBe(48000);
+  it("does not mistake the event number for the number of days", async () => {
+    expect((await read("Meridian Supply asked for 2 more days on RFP-2041")).extensionDays).toBe(2);
   });
 
-  it.each([
-    ["$", "USD"],
-    ["€", "EUR"],
-    ["£", "GBP"],
-  ])("reads the %s sign as %s", async (sign, code) => {
-    expect((await read(`20% off for Acme, ${sign}48,000 deal`)).currency).toBe(code);
+  it("picks up the reason when one is given", async () => {
+    const extraction = await read("Meridian Supply asked for 2 more days on RFP-2041 because their plant lost power");
+    expect(extraction.reason).toBe("their plant lost power");
   });
 
-  it("leaves the currency null when the message does not say", async () => {
-    expect((await read("20% off for Acme, 48k deal")).currency).toBeNull();
-  });
-
-  it("is not confident about a message that is not a discount request", async () => {
+  it("is not confident about a message that is not an extension request", async () => {
     const extraction = await read("who is on call this weekend?");
     expect(extraction.confidence).toBeLessThan(0.6);
-    expect(extraction.discountPercent).toBeNull();
+    expect(extraction.extensionDays).toBeNull();
   });
 
-  it("is not confident when the discount is missing", async () => {
-    const extraction = await read("can we help Acme on the 48k renewal");
-    expect(extraction.discountPercent).toBeNull();
+  it("is not confident when the number of days is missing", async () => {
+    const extraction = await read("Meridian Supply asked for more time on RFP-2041");
+    expect(extraction.extensionDays).toBeNull();
     expect(extraction.confidence).toBeLessThan(0.6);
   });
 
   it("always returns output that satisfies the schema", async () => {
-    const messages = [
-      "",
-      "???",
-      "20%",
-      "for Acme",
-      "1.2m for Umbrella, 25% off because churn risk",
-    ];
+    const messages = ["", "???", "2 days", "for Meridian Supply", "RFP-1 a week because customs"];
     for (const message of messages) {
       await expect(read(message)).resolves.toBeDefined();
     }

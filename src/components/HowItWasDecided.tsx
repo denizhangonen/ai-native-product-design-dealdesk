@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { DiscountRequest } from "@/domain/request";
+import type { DeadlineRequest } from "@/domain/request";
 import type { RoutingDecision } from "@/domain/rules";
 
 type PanelProps = {
@@ -28,7 +28,7 @@ export function HowItWasDecided({
   request,
   routing,
 }: {
-  request: DiscountRequest;
+  request: DeadlineRequest;
   routing: RoutingDecision;
 }) {
   const reading = request.reading;

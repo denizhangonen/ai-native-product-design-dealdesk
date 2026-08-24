@@ -1,5 +1,5 @@
 import { getConfig } from "@/config";
-import type { DiscountRequest } from "@/domain/request";
+import type { DeadlineRequest } from "@/domain/request";
 import { approvalRequestEmail, clarificationEmail } from "@/integrations/email/messages";
 import { getEmailProvider } from "@/integrations/email/provider";
 
@@ -20,8 +20,8 @@ async function sendTo(
   });
 }
 
-export async function sendApprovalRequest(request: DiscountRequest): Promise<void> {
-  const approvers = getConfig().FINANCE_APPROVERS;
+export async function sendApprovalRequest(request: DeadlineRequest): Promise<void> {
+  const approvers = getConfig().APPROVER_EMAILS;
   if (approvers.length === 0) {
     console.warn({
       event: "no_approvers_configured",
@@ -38,7 +38,7 @@ export async function sendApprovalRequest(request: DiscountRequest): Promise<voi
 
 /** Keyed by the reply being answered, so two unclear replies still get two answers. */
 export async function sendClarification(
-  request: DiscountRequest,
+  request: DeadlineRequest,
   to: string,
   inReplyTo: string,
 ): Promise<void> {

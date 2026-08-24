@@ -7,7 +7,7 @@ import { Timeline } from "@/components/Timeline";
 import { listEvents } from "@/data/events";
 import { getRequestByReference } from "@/data/requests";
 import { formatWhen } from "@/components/format";
-import { formatAmount } from "@/domain/request";
+import { formatExtension } from "@/domain/request";
 import { decideRoute } from "@/domain/rules";
 import { isFinal } from "@/domain/status";
 import { getConfig } from "@/config";
@@ -30,7 +30,7 @@ export default async function RequestPage({ params }: PageProps<"/r/[reference]"
 
   const events = await listEvents(request.id);
   // Recomputed rather than stored: the rule is the same one that ran at the time.
-  const routing = decideRoute(request, getConfig().APPROVAL_THRESHOLD_PERCENT);
+  const routing = decideRoute(request, getConfig().AUTO_APPROVE_MAX_DAYS);
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-14 sm:px-10">
@@ -46,7 +46,7 @@ export default async function RequestPage({ params }: PageProps<"/r/[reference]"
           <h1 className="text-3xl font-semibold tracking-tight">
             <span className="font-mono">{request.reference}</span>
             <span className="text-gray-400 dark:text-gray-600"> · </span>
-            {request.customer}
+            {request.supplier}
           </h1>
           <StatusBadge status={request.status} />
         </div>
@@ -59,15 +59,17 @@ export default async function RequestPage({ params }: PageProps<"/r/[reference]"
       <dl className="mb-12 grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
         <div>
           <dt className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-            Deal value
+            Event
           </dt>
-          <dd className="mt-1.5 text-lg font-medium tabular-nums">{formatAmount(request)}</dd>
+          <dd className="mt-1.5 font-mono text-lg font-medium">{request.event}</dd>
         </div>
         <div>
           <dt className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-            Discount
+            Extension
           </dt>
-          <dd className="mt-1.5 text-lg font-medium tabular-nums">{request.discountPercent}%</dd>
+          <dd className="mt-1.5 text-lg font-medium tabular-nums">
+            {formatExtension(request.extensionDays)}
+          </dd>
         </div>
         <div>
           <dt className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">

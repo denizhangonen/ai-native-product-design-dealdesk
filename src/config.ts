@@ -2,16 +2,12 @@ import { z } from "zod";
 
 export const configSchema = z.object({
   DATABASE_URL: z.string().min(1),
-  APPROVAL_THRESHOLD_PERCENT: z.coerce.number().min(0).max(100).default(15),
+  /** Extensions up to this many days are approved on the spot; longer ones go to the lead. */
+  AUTO_APPROVE_MAX_DAYS: z.coerce.number().int().min(0).max(365).default(3),
   LLM_PROVIDER: z.enum(["fake", "openai"]).default("fake"),
   OPENAI_API_KEY: z.string().min(1).optional(),
   // Cheapest capable model; the prompts are short and the answers are tiny JSON.
   OPENAI_MODEL: z.string().default("gpt-4.1-nano"),
-  DEFAULT_CURRENCY: z
-    .string()
-    .regex(/^[A-Za-z]{3}$/)
-    .default("USD")
-    .transform((value) => value.toUpperCase()),
   // Below this, the message is treated as not understood rather than guessed at.
   MIN_PARSE_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.6),
   EMAIL_PROVIDER: z.enum(["fake", "resend"]).default("fake"),
@@ -21,7 +17,7 @@ export const configSchema = z.object({
   EMAIL_FROM: z.string().default("Dealdesk <dealdesk@example.com>"),
   EMAIL_REPLY_TO: z.string().default("dealdesk@example.com"),
   /** Only these addresses may decide. Anyone else is logged and ignored. */
-  FINANCE_APPROVERS: z
+  APPROVER_EMAILS: z
     .string()
     .default("")
     .transform((value) =>
