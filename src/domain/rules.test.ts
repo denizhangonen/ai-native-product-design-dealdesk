@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideFromCounter, decideRoute } from "@/domain/rules";
+import { decideFromCounter, decideRoute, isPlausibleCounter } from "@/domain/rules";
 
 const MAX_AUTO_DAYS = 3;
 
@@ -54,5 +54,30 @@ describe("decideFromCounter", () => {
 
   it("never turns an approval into a rejection", () => {
     expect(decideFromCounter({ decision: "approve", counterDays: 10 }, 5)).toBe("approve");
+  });
+});
+
+describe("isPlausibleCounter", () => {
+  it("accepts a counter at or below the request", () => {
+    expect(isPlausibleCounter(5, 5)).toBe(true);
+    expect(isPlausibleCounter(1, 14)).toBe(true);
+    expect(isPlausibleCounter(0, 5)).toBe(true);
+  });
+
+  it("accepts up to twice the request plus a little room", () => {
+    expect(isPlausibleCounter(13, 5)).toBe(true);
+    expect(isPlausibleCounter(14, 5)).toBe(false);
+  });
+
+  it("gives a small request room for a slightly larger answer", () => {
+    expect(isPlausibleCounter(3, 1)).toBe(true);
+    expect(isPlausibleCounter(5, 1)).toBe(true);
+    expect(isPlausibleCounter(6, 1)).toBe(false);
+  });
+
+  it("refuses more than sixty days whatever was asked", () => {
+    expect(isPlausibleCounter(60, 40)).toBe(true);
+    expect(isPlausibleCounter(61, 40)).toBe(false);
+    expect(isPlausibleCounter(300, 200)).toBe(false);
   });
 });

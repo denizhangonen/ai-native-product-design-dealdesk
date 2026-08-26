@@ -137,7 +137,7 @@ describe("readInboundEmail with Resend", () => {
   });
 
   it("refuses a reply whose sending domain disowns it", async () => {
-    const body = received({ from: "gonendenizhan@gmail.com" });
+    const body = received({ from: "lead@example.com" });
     stubContent({
       text: "approved",
       headers: { "Authentication-Results": "amazonses.com; spf=fail; dkim=fail; dmarc=fail" },

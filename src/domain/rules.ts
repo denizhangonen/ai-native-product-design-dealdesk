@@ -50,3 +50,19 @@ export function decideFromCounter(
   }
   return reading.decision;
 }
+
+const MAX_COUNTER_MULTIPLE = 2;
+// Small requests get a little room, so "3 days" for a 1-day ask still reads as a decision.
+const COUNTER_GRACE_DAYS = 3;
+const MAX_COUNTER_DAYS = 60;
+
+/**
+ * Whether a counter offer is close enough to the request to act on. A reply that
+ * names a number far beyond what was asked is more likely a misread than a decision,
+ * so the system asks again instead of deciding. Offers shorter than the request are
+ * always plausible: "1 day is the most we can give" is a real answer.
+ */
+export function isPlausibleCounter(counterDays: number, requestedDays: number): boolean {
+  if (counterDays > MAX_COUNTER_DAYS) return false;
+  return counterDays <= requestedDays * MAX_COUNTER_MULTIPLE + COUNTER_GRACE_DAYS;
+}

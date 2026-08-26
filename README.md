@@ -72,3 +72,25 @@ a role with access to that schema and nothing else. See `db/APPLIED.md`.
 
 No CRM, no admin UI, no user accounts, no multi-step approval chains. Those are product
 surface, and the point here is the workflow.
+
+## What a full version would need
+
+This is a working slice, so it is honest about the gap between it and something you
+would run a business on.
+
+- **A permissions model.** Today one allow-list of approver addresses decides who may
+  approve, and the status page is public. A real version needs roles, per-category
+  approvers, and a page that knows who is looking at it.
+- **Richer audit exports.** Every request keeps an append-only trail of who read what,
+  which rule fired, who decided and when. It is queryable, not yet exportable: no CSV,
+  no retention policy, no signed export for an auditor.
+- **An owned inbound domain per tenant.** Replies arrive on one subdomain. Several
+  companies would each need their own, with the sender checks scoped to it.
+
+Two things a reader might expect to find in this list are already built. Delivery
+retries are handled: each Slack event and each email is claimed once, a redelivery
+during a live attempt does nothing, a redelivery after a dead attempt takes over, and
+every outbound email carries an idempotency key. And the model is fenced: it extracts
+fields and reads replies; it never routes, never changes a status, and its output is
+validated against a schema before anything downstream sees it. `docs/confidence.md`
+lists the failure modes and how each one is proven.

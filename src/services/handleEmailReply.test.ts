@@ -147,6 +147,21 @@ describe("handleEmailReply", () => {
     );
   });
 
+  // "Give them 300 days" is a misread far more often than a decision.
+  it("asks again instead of acting on a counter offer far from the request", async () => {
+    mocks.parseDecision.mockResolvedValue({
+      kind: "decided",
+      reading: { decision: "approve", note: null, counterDays: 300, confidence: 0.95 },
+    });
+
+    const result = await handleEmailReply(EMAIL);
+
+    expect(result).toBe("unclear");
+    expect(mocks.applyDecision).not.toHaveBeenCalled();
+    expect(mocks.sendClarification).toHaveBeenCalledWith(REQUEST, "lead@example.com", "msg-1");
+    expect(mocks.markInboundEmailProcessed).toHaveBeenCalledWith("msg-1");
+  });
+
   it("does nothing when a redelivery arrives while the first attempt is still running", async () => {
     mocks.recordInboundEmail.mockResolvedValue("in_flight");
 

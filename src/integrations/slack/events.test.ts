@@ -28,7 +28,7 @@ describe("classifyDelivery", () => {
   });
 
   it("accepts a plain message from a person", () => {
-    const result = classifyDelivery(delivery({ text: "  20% off for Acme  " }), CHANNEL);
+    const result = classifyDelivery(delivery({ text: "  2 more days for Meridian Supply on RFP-2041  " }), CHANNEL);
 
     expect(result).toEqual({
       kind: "message",
@@ -37,7 +37,7 @@ describe("classifyDelivery", () => {
         channelId: CHANNEL,
         slackUserId: "U1",
         messageTs: "1699999999.000100",
-        text: "20% off for Acme",
+        text: "2 more days for Meridian Supply on RFP-2041",
       },
     });
   });

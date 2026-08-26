@@ -13,6 +13,15 @@ anything downstream sees it. The routing rule (more than 3 days needs the sourci
 `src/domain/rules.ts`, a pure function with a test on the boundary. There is a test
 asserting the model's output can never carry a route or a status.
 
+## When the answer is too far from the question
+
+A counter offer is only acted on when it is within reach of the request: at most twice
+the days asked for plus three, and never more than sixty. Anything beyond that is more
+likely a misread than a decision, so the system sends the clarification email and
+changes nothing. The band lives in `isPlausibleCounter` in `src/domain/rules.ts`, a pure
+function with tests on both edges. Shorter counters are always plausible: "one day is
+the most we can give" is a real answer.
+
 ## Telling the two apart
 
 Every request records how it was read and, separately, why it was routed. The status
@@ -50,6 +59,7 @@ note, loses the note and nothing else: the request is still read, routed and ans
 | Reply is ambiguous ("when does the event close?") | Clarification email, state unchanged | Unit test, live |
 | Reply offers fewer days | Recorded as a rejection with the counter offer | Unit test, live |
 | Reply offers more days than asked for | Treated as an approval, decided by a rule not a prompt | Unit test, found live |
+| Reply names a number far from the request ("give them 300 days") | Not acted on; a clarification email goes back and the state is unchanged | Unit test |
 | Model writes a condition the approver never wrote | The note is dropped rather than passed on as theirs | Unit test, found live |
 | Same reply email redelivered | No-op (unique `message_id`) | Unit test, live |
 | A delivery fails halfway through | Not marked handled, so a redelivery retries it | Unit test |

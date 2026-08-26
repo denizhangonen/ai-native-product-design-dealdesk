@@ -8,7 +8,7 @@ const provider = createOpenAiProvider({
 const REQUEST = {
   task: "parse_request" as const,
   system: "sys",
-  user: "20% off for Acme",
+  user: "2 more days for Meridian Supply on RFP-2041",
 };
 
 function respond(status: number, payload: unknown) {
@@ -37,7 +37,7 @@ describe("openai provider", () => {
     });
     expect(body.messages).toEqual([
       { role: "system", content: "sys" },
-      { role: "user", content: "20% off for Acme" },
+      { role: "user", content: "2 more days for Meridian Supply on RFP-2041" },
     ]);
   });
 

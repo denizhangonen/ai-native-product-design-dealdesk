@@ -4,7 +4,7 @@ import { markInboundEmailProcessed, recordInboundEmail } from "@/data/inboundEma
 import { getRequestByReference } from "@/data/requests";
 import { InvalidTransition } from "@/domain/errors";
 import { formatExtension } from "@/domain/request";
-import { decideFromCounter } from "@/domain/rules";
+import { decideFromCounter, isPlausibleCounter } from "@/domain/rules";
 import { isApprover, normaliseAddress } from "@/guards/approverAllowlist";
 import { extractReference, stripQuotedText } from "@/integrations/email/parseReply";
 import { sendClarification } from "@/integrations/email/send";
@@ -77,6 +77,14 @@ export async function handleEmailReply(email: InboundEmail): Promise<EmailReplyR
   }
 
   const { note, counterDays } = outcome.reading;
+
+  // A number far from what was asked is more likely a misread than a decision.
+  if (counterDays !== null && !isPlausibleCounter(counterDays, request.extensionDays)) {
+    console.warn({ event: "email_counter_implausible", reference, counterDays });
+    await sendClarification(request, from, email.messageId);
+    return finish("unclear");
+  }
+
   // The model reports what was written; this rule decides what a counter offer means.
   const decision = decideFromCounter(outcome.reading, request.extensionDays);
   const fullNote =
